@@ -1,0 +1,282 @@
+[
+  {
+    "name": "ServiceNow",
+    "symbol": "NOW"
+  },
+  {
+    "name": "McDonald's Corporation",
+    "symbol": "MCD"
+  },
+  {
+    "name": "SAP SE",
+    "symbol": "SAP"
+  },
+  {
+    "name": "RadNet Inc.",
+    "symbol": "RDNT"
+  },
+  {
+    "name": "Rheinmetall AG",
+    "symbol": "RHM.DE"
+  },
+  {
+    "name": "GFL Environmental Inc.",
+    "symbol": "GFL"
+  },
+  {
+    "name": "Meta Platforms Inc.",
+    "symbol": "META"
+  },
+  {
+    "name": "Haier Smart Home Co. Ltd.",
+    "symbol": "HAG.DE"
+  },
+  {
+    "name": "Vulcan Energy Resources Ltd.",
+    "symbol": "VUL.AX"
+  },
+  {
+    "name": "Münchener Rückversicherungs-Gesellschaft AG",
+    "symbol": "MUV2.DE"
+  },
+  {
+    "name": "Xiaomi Corporation",
+    "symbol": "1810.HK"
+  },
+  {
+    "name": "Spotify Technology S.A.",
+    "symbol": "SPOT"
+  },
+  {
+    "name": "Roche Holding AG",
+    "symbol": "ROG.SW"
+  },
+  {
+    "name": "Walmart Inc.",
+    "symbol": "WMT"
+  },
+  {
+    "name": "Visa Inc.",
+    "symbol": "V"
+  },
+  {
+    "name": "Vertex Pharmaceuticals Incorporated",
+    "symbol": "VRTX"
+  },
+  {
+    "name": "Tokyo Electron Ltd.",
+    "symbol": "8035.T"
+  },
+  {
+    "name": "Norcros Holdings plc",
+    "symbol": "NCH2.DE"
+  },
+  {
+    "name": "TG Therapeutics Inc.",
+    "symbol": "TGTX"
+  },
+  {
+    "name": "Tesla Inc.",
+    "symbol": "TSLA"
+  },
+  {
+    "name": "TechnipFMC plc",
+    "symbol": "FTI"
+  },
+  {
+    "name": "Synopsys Inc.",
+    "symbol": "SNPS"
+  },
+  {
+    "name": "ALSPW (Alstom Warrants)",
+    "symbol": "ALSPW.PA"
+  },
+  {
+    "name": "Siemens Energy AG",
+    "symbol": "ENR.DE"
+  },
+  {
+    "name": "Semtech Corporation",
+    "symbol": "SMTC"
+  },
+  {
+    "name": "Select Water Solutions Inc.",
+    "symbol": "WTTR"
+  },
+  {
+    "name": "Samsung Electronics Co. Ltd.",
+    "symbol": "005930.KS"
+  },
+  {
+    "name": "Salesforce Inc.",
+    "symbol": "CRM"
+  },
+  {
+    "name": "R3 Rheinmetall Autoteile (ETF/Instrument)",
+    "symbol": "R3RK.DE"
+  },
+  {
+    "name": "Palantir Technologies Inc.",
+    "symbol": "PLTR"
+  },
+  {
+    "name": "Oracle Corporation",
+    "symbol": "ORCL"
+  },
+  {
+    "name": "O'Reilly Automotive Inc.",
+    "symbol": "ORLY"
+  },
+  {
+    "name": "NXP Semiconductors N.V.",
+    "symbol": "NXPI"
+  },
+  {
+    "name": "NVIDIA Corporation",
+    "symbol": "NVDA"
+  },
+  {
+    "name": "Novo Nordisk A/S",
+    "symbol": "NVO"
+  },
+  {
+    "name": "Nanobiotix S.A.",
+    "symbol": "NBTX"
+  },
+  {
+    "name": "Mitsubishi Heavy Industries Ltd.",
+    "symbol": "7011.T"
+  },
+  {
+    "name": "Microsoft Corporation",
+    "symbol": "MSFT"
+  },
+  {
+    "name": "Mastercard Incorporated",
+    "symbol": "MA"
+  },
+  {
+    "name": "KLA Corporation",
+    "symbol": "KLAC"
+  },
+  {
+    "name": "THK Co. Ltd.",
+    "symbol": "6861.T"
+  },
+  {
+    "name": "JPMorgan Chase & Co.",
+    "symbol": "JPM"
+  },
+  {
+    "name": "Iren SpA",
+    "symbol": "IREN.MI"
+  },
+  {
+    "name": "Incyte Corporation",
+    "symbol": "INCY"
+  },
+  {
+    "name": "International Business Machines Corporation",
+    "symbol": "IBM"
+  },
+  {
+    "name": "HP Inc.",
+    "symbol": "HPQ"
+  },
+  {
+    "name": "Shimadzu Corporation",
+    "symbol": "7741.T"
+  },
+  {
+    "name": "GE Vernova Inc.",
+    "symbol": "GEV"
+  },
+  {
+    "name": "ElringKlinger AG",
+    "symbol": "ELG.DE"
+  },
+  {
+    "name": "CrowdStrike Holdings Inc.",
+    "symbol": "CRWD"
+  },
+  {
+    "name": "Costco Wholesale Corporation",
+    "symbol": "COST"
+  },
+  {
+    "name": "The Coca-Cola Company",
+    "symbol": "KO"
+  },
+  {
+    "name": "Cloudflare Inc.",
+    "symbol": "NET"
+  },
+  {
+    "name": "Clean Harbors Inc.",
+    "symbol": "CLH"
+  },
+  {
+    "name": "Caterpillar Inc.",
+    "symbol": "CAT"
+  },
+  {
+    "name": "Capgemini SE",
+    "symbol": "CAP.PA"
+  },
+  {
+    "name": "Broadcom Inc.",
+    "symbol": "AVGO"
+  },
+  {
+    "name": "British American Tobacco plc",
+    "symbol": "BTI"
+  },
+  {
+    "name": "Boston Scientific Corporation",
+    "symbol": "BSX"
+  },
+  {
+    "name": "ASML Holding N.V.",
+    "symbol": "ASML"
+  },
+  {
+    "name": "Apple Inc.",
+    "symbol": "AAPL"
+  },
+  {
+    "name": "American Water Works Company Inc.",
+    "symbol": "AWK"
+  },
+  {
+    "name": "Amazon.com Inc.",
+    "symbol": "AMZN"
+  },
+  {
+    "name": "Alphabet Inc.",
+    "symbol": "GOOGL"
+  },
+  {
+    "name": "Allianz SE",
+    "symbol": "ALV.DE"
+  },
+  {
+    "name": "Alibaba Group Holding Ltd.",
+    "symbol": "BABA"
+  },
+  {
+    "name": "Daiichi Sankyo Company Ltd.",
+    "symbol": "DKIA.F"
+  },
+  {
+    "name": "DeFi Technologies Inc.",
+    "symbol": "DEFT"
+  },
+  {
+    "name": "Sartorius AG",
+    "symbol": "SRT.DE"
+  },
+  {
+    "name": "Sartorius Stedim Biotech S.A.",
+    "symbol": "DIM.PA"
+  }  
+]
