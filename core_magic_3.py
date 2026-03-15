@@ -331,11 +331,11 @@ def berechne_indikatoren(data: pd.DataFrame) -> pd.DataFrame:
     low = data["Low"]
 
     # ATR (14 Tage)
-    high = data["High"]
-    low = data["Low"]
-    close = data["Close"]
-    tr = pd.concat([high - low, (high - close.shift()).abs(), (low - close.shift()).abs()], axis=1).max(axis=1)
-    data["ATR"] = tr.rolling(14).mean()
+    high_low = data["High"] - data["Low"]
+    high_close = (data["High"] - data["Close"].shift()).abs()
+    low_close = (data["Low"] - data["Close"].shift()).abs()
+    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    data["ATR"] = tr.rolling(window=14).mean()
 
     # Bollinger Bänder
     ma20 = data["Close"].rolling(window=20).mean()
@@ -359,13 +359,6 @@ def berechne_indikatoren(data: pd.DataFrame) -> pd.DataFrame:
     avg_loss = loss.rolling(window=14).mean()
     rs = avg_gain / avg_loss
     data["RSI"] = 100 - (100 / (1 + rs))
-
-    # ATR (Average True Range) 14 Tage
-    high_low = data["High"] - data["Low"]
-    high_close = (data["High"] - data["Close"].shift()).abs()
-    low_close = (data["Low"] - data["Close"].shift()).abs()
-    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-    data["ATR"] = tr.rolling(window=14).mean()
 
     # Beispiel Support/Resistance - hier Dummywerte (besser mit echter Methode berechnen)
     data["Support1"] = data["Close"].rolling(window=20).min()
