@@ -125,6 +125,7 @@ def aktienseite():
     # Sidebar-Parameter laden
     # ---------------------------------------------------------  
     tage, min_veraenderung, Auswertung_tage, short_window, long_window, signal_window = lade_sidebar_parameter()
+    use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True)
         
     # ---------------------------------------------------------
     # Laden aller Daten der letzten 4 jahre für weitere 
@@ -187,8 +188,8 @@ def aktienseite():
     fundamentaldaten = lade_fundamentaldaten(symbol)
     data_fund = fundamental_alanalyzer.fundamental_analyse(fundamentaldaten, symbol)
     sector = fundamentaldaten.get("sector")  # kann "Unknown" sein
-    thresholds = get_thresholds(symbol=symbol, sector=sector)
-
+    # thresholds = get_thresholds(symbol=symbol, sector=sector)
+    thresholds = get_thresholds(symbol if use_auto else None, sector)  # learned aus/an
 
     # ---------------------------------------------------------
     # Import der Analysten Daten
@@ -254,6 +255,22 @@ def aktienseite():
     # TAB Overview
     # ---------------------------------------------------------
     with tab_overview:
+        
+        with st.container(border=True):
+                # ... dein bestehender Inhalt ...
+                # --- Kalibrierungs-Button ---
+                from learning.optimizer import optimize_symbol  # neuer Import
+                if st.button("🔁 Parameter für dieses Symbol rekalibrieren"):
+                    with st.spinner("Kalibriere Parameter (kleiner Grid-Search)…"):
+                        try:
+                            result = optimize_symbol(symbol, period="4y")
+                            st.success(f"Kalibrierung fertig: Score={result['best_score']:.3f}")
+                            st.json(result["delta"])
+                            # Wichtig: Cache leeren, damit neue learned-Werte greifen
+                            st.cache_data.clear()
+                        except Exception as e:
+                            st.error(f"Kalibrierung fehlgeschlagen: {e}")
+
         with st.container(border=True):
             main_analyzer.plot_hautpchart(name, 1)
         # --- 2 Spalten Layout ---
@@ -576,7 +593,9 @@ def aktienseite():
         st.write("Leere Dummy Seite")
                 
     with Algorithmus:
-        st.write("Leere Dummy Seite")
+        with st.expander("Aktive Parameter (nach Merge)"):
+            st.json(thresholds)
+
         """
         with st.container(border=True):
             st.subheader("Analyse der Signale")
