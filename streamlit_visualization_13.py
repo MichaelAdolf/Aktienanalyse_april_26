@@ -328,8 +328,7 @@ def aktienseite():
                 with col12:
                     st.warning(f"Risiko: {rsi_interp['risk']}")
                 st.info(f"Handlungsfazit: {rsi_interp['typical_action']}")
-                st.progress(rsi_result["strength"])
-
+                st.progress(int(round(rsi_result["strength"] * 100)))
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
         # ---------------------------------------------------------
@@ -368,7 +367,7 @@ def aktienseite():
                 with col12:
                     st.warning(f"Risiko: {macd_zwei_interp['risk']}")
                 st.info(f"Handlungsfazit: {macd_zwei_interp['typical_action']}")
-                st.progress(macd_zwei_result["strength"])
+                st.progress(int(round(macd_result["strength"] * 100)))
                         
         col1, col2 = st.columns([1,1])
         # ---------------------------------------------------------
@@ -409,7 +408,7 @@ def aktienseite():
                 with col12:
                     st.warning(f"Risiko: {adx_result['risk']}")
                 st.info(f"Handlungsfazit: {adx_result['action_hint']}")
-                st.progress(adx_result["strength"])
+                st.progress(int(round(adx_result["strength"] * 100)))
 
     with tab_handel:
         # ---------------------------------------------------------
