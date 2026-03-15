@@ -263,7 +263,7 @@ def aktienseite():
         with st.container(border=True):
                 # ... dein bestehender Inhalt ...
                 # --- Kalibrierungs-Button ---
-                from learning.optimizer import optimize_symbol  # neuer Import
+                from learning_optimizer import optimize_symbol  # neuer Import
                 if st.button("🔁 Parameter für dieses Symbol rekalibrieren"):
                     with st.spinner("Kalibriere Parameter (kleiner Grid-Search)…"):
                         try:
