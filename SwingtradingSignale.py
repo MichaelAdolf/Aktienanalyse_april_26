@@ -1504,39 +1504,79 @@ Bearish	2 % über Einstieg (für Short)	4 % unter Einstieg (für Short)	Strenger
 Sideways	1.5 % unter/über Einstieg	3 % über/unter Einstieg	Engere Stops wegen Seitwärtsbewegung, Take-Profit kleiner
 """
 
+
 class TradeRiskManager:
     def __init__(self, einstiegskurs: float, regime: str):
-        self.einstiegskurs = einstiegskurs
-        self.regime = regime.lower()
+        self.einstiegskurs = float(einstiegskurs)
+        self.regime = (regime or "").lower()
 
-    def stop_loss_take_profit(self, position_typ="long") -> dict:
+    def sl_tp_by_atr(self, atr: float, position_typ: str = "long") -> dict:
         """
-        position_typ: 'long' oder 'short'
+        ATR-basierte SL/TP-Ermittlung pro Market-Regime.
+        :param atr: aktueller ATR-Wert (gleiche Preis-Einheit wie Kurs)
+        :param position_typ: "long" oder "short"
         """
+        # Default-Multiplikatoren
+        sl_mult = 1.2
+        tp_mult = 1.8
 
-        # Default Werte (in Prozent)
-        stop_loss_pct = 0.03
-        take_profit_pct = 0.06
+        if self.regime == "trend_market":
+            sl_mult, tp_mult = 1.5, 3.0
+        elif self.regime == "range_market":
+            sl_mult, tp_mult = 1.0, 1.5
+        elif self.regime in ("late_trend", "transition_phase"):
+            sl_mult, tp_mult = 1.2, 1.8
 
-        if self.regime == "bullish":
-            stop_loss_pct = 0.03
-            take_profit_pct = 0.06
-        elif self.regime == "bearish":
-            stop_loss_pct = 0.02
-            take_profit_pct = 0.04
-        elif self.regime == "sideways":
-            stop_loss_pct = 0.015
-            take_profit_pct = 0.03
-        else:
-            # Fallback, falls Regime unbekannt
-            stop_loss_pct = 0.03
-            take_profit_pct = 0.05
+        atr = float(atr or 0.0)
+        if atr <= 0:
+            # Fallback: 2%/4% in absoluten Notfällen
+            atr = self.einstiegskurs * 0.02
+            sl_mult, tp_mult = 1.0, 2.0
 
         if position_typ == "long":
-            stop_loss = self.einstiegskurs * (1 - stop_loss_pct)
+            stop_loss  = self.einstiegskurs - sl_mult * atr
+            take_profit = self.einstiegskurs + tp_mult * atr
+        elif position_typ == "short":
+            stop_loss  = self.einstiegskurs + sl_mult * atr
+            take_profit = self.einstiegskurs - tp_mult * atr
+        else:
+            raise ValueError("position_typ muss 'long' oder 'short' sein")
+
+        return {
+            "stop_loss": round(stop_loss, 4),
+            "take_profit": round(take_profit, 4),
+            "sl_mult_atr": sl_mult,
+            "tp_mult_atr": tp_mult,
+            "regime": self.regime,
+            "position_typ": position_typ
+        }
+
+    def stop_loss_take_profit(self, position_typ="long", use_atr=False, atr: float = None) -> dict:
+        """
+        Kompatibel zur bisherigen API:
+        - use_atr=True: ATR-basierte SL/TP via sl_tp_by_atr(...)
+        - use_atr=False: prozent-basierte SL/TP wie bisher
+        """
+        if use_atr:
+            return self.sl_tp_by_atr(atr=atr, position_typ=position_typ)
+
+        # ---- bestehende Prozent-Logik (unverändert) ----
+        stop_loss_pct = 0.03
+        take_profit_pct = 0.06
+        if self.regime == "bullish":
+            stop_loss_pct, take_profit_pct = 0.03, 0.06
+        elif self.regime == "bearish":
+            stop_loss_pct, take_profit_pct = 0.02, 0.04
+        elif self.regime == "sideways":
+            stop_loss_pct, take_profit_pct = 0.015, 0.03
+        else:
+            stop_loss_pct, take_profit_pct = 0.03, 0.05
+
+        if position_typ == "long":
+            stop_loss  = self.einstiegskurs * (1 - stop_loss_pct)
             take_profit = self.einstiegskurs * (1 + take_profit_pct)
         elif position_typ == "short":
-            stop_loss = self.einstiegskurs * (1 + stop_loss_pct)
+            stop_loss  = self.einstiegskurs * (1 + stop_loss_pct)
             take_profit = self.einstiegskurs * (1 - take_profit_pct)
         else:
             raise ValueError("position_typ muss 'long' oder 'short' sein")
