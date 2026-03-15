@@ -154,8 +154,21 @@ def aktienseite():
     Analysten = Analystenbewertung()
     period_analyzer = PeriodAnalysis()
 
+
+    # ---------------------------------------------------------
+    # Laden und Analysieren der Fundamentaldaten
+    # ---------------------------------------------------------  
+    fundamentaldaten = lade_fundamentaldaten(symbol)
+    data_fund = fundamental_alanalyzer.fundamental_analyse(fundamentaldaten, symbol)
+    sector = fundamentaldaten.get("sector")  # kann "Unknown" sein
+
     # ---------------------------------------------------------
 
+    # thresholds = get_thresholds(symbol=symbol, sector=sector)
+    thresholds = get_thresholds(symbol if use_auto else None, sector)  # learned aus/an
+
+    # ---------------------------------------------------------
+    
     rsi_analysis = RSIAnalysis(
         oversold=thresholds["RSI"]["oversold"],
         overbought=thresholds["RSI"]["overbought"],
@@ -181,15 +194,6 @@ def aktienseite():
     swingsignal_analysis = SwingSignalService()
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
-
-    # ---------------------------------------------------------
-    # Laden und Analysieren der Fundamentaldaten
-    # ---------------------------------------------------------  
-    fundamentaldaten = lade_fundamentaldaten(symbol)
-    data_fund = fundamental_alanalyzer.fundamental_analyse(fundamentaldaten, symbol)
-    sector = fundamentaldaten.get("sector")  # kann "Unknown" sein
-    # thresholds = get_thresholds(symbol=symbol, sector=sector)
-    thresholds = get_thresholds(symbol if use_auto else None, sector)  # learned aus/an
 
     # ---------------------------------------------------------
     # Import der Analysten Daten
