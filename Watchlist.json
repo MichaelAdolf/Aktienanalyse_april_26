@@ -28,7 +28,7 @@
     "symbol": "META"
   },
   {
-    "name": "Haier Smart Home Co. Ltd.",
+    "name": "Hensoldt AG",
     "symbol": "HAG.DE"
   },
   {
@@ -68,7 +68,7 @@
     "symbol": "8035.T"
   },
   {
-    "name": "Norcros Holdings plc",
+    "name": "thyssenkrupp nucera AG & Co. KGaA",
     "symbol": "NCH2.DE"
   },
   {
@@ -88,7 +88,7 @@
     "symbol": "SNPS"
   },
   {
-    "name": "ALSPW (Alstom Warrants)",
+    "name": "Spineway SA",
     "symbol": "ALSPW.PA"
   },
   {
@@ -160,7 +160,7 @@
     "symbol": "KLAC"
   },
   {
-    "name": "THK Co. Ltd.",
+    "name": "Keyence Corporation",
     "symbol": "6861.T"
   },
   {
@@ -184,7 +184,7 @@
     "symbol": "HPQ"
   },
   {
-    "name": "Shimadzu Corporation",
+    "name": "HOYA Corporation",
     "symbol": "7741.T"
   },
   {
@@ -192,7 +192,7 @@
     "symbol": "GEV"
   },
   {
-    "name": "ElringKlinger AG",
+    "name": "Elmos Semiconductor SE",
     "symbol": "ELG.DE"
   },
   {
@@ -278,5 +278,29 @@
   {
     "name": "Sartorius Stedim Biotech S.A.",
     "symbol": "DIM.PA"
-  }  
+  },
+  {
+    "name": "DroneShield Limited",
+    "symbol": "DRO.AX"
+  },
+  {
+    "name": "Micron Technology, Inc.",
+    "symbol": "MTE.DE"
+  },
+  {
+    "name": "Western Digital",
+    "symbol": "WDC"
+  },
+  {
+    "name": "Applied Materials",
+    "symbol": "AP2.DU"
+  },
+  {
+    "name": "Eli Lilly",
+    "symbol": "LLY"
+  },
+  {
+    "name": "Regeneron",
+    "symbol": "REGN"
+  } 
 ]
