@@ -410,37 +410,74 @@ def aktienseite():
                 st.info(f"Handlungsfazit: {adx_result['action_hint']}")
                 st.progress(int(round(adx_result["strength"] * 100)))
 
+    
     with tab_handel:
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
         # ---------------------------------------------------------
         with st.container(border=True):
-            st.markdown(f"### Handelsentscheidung – {tradedecision_result["interpretation_short"]}")
-            atr = data["ATR"].iloc[-1]
-            letzter_close = data["Close"].iloc[-1]
-            stop_loss_kurs_berechnet = round(letzter_close - 1.5 * atr, 2)
+            st.markdown(f"### Handelsentscheidung – {tradedecision_result['interpretation_short']}")
+    
+            # --- ATR-basierte SL/TP via TradeRiskManager ---
+            atr = float(data["ATR"].iloc[-1])
+            letzter_close = float(data["Close"].iloc[-1])
+            regime = market_result.get("market_regime")  # "trend_market", "range_market", etc.
+    
+            # Wichtig: TradeRiskManager muss importiert sein (oben im File oder hier lokal)
+            from SwingtradingSignale import TradeRiskManager
+    
+            # Richtung ableiten aus der Entscheidung
+            position_typ = "long" if tradedecision_result["action"] == "BUY" else "short"
+    
+            # SL/TP berechnen (ATR-basiert, Regime-sensitiv)
+            trm = TradeRiskManager(einstiegskurs=letzter_close, regime=regime)
+            sl_tp = trm.stop_loss_take_profit(
+                position_typ=position_typ,
+                use_atr=True,
+                atr=atr
+            )
+    
+            stop_loss_kurs_berechnet = sl_tp["stop_loss"]
+            take_profit_kurs_berechnet = sl_tp["take_profit"]
+    
+            # Positionsgröße nur bei BUY (Long) berechnen und anzeigen
             if tradedecision_result["action"] == "BUY":
                 sizer = PositionSizer(konto_groesse=10000)
                 pos = sizer.berechne_positionsgroesse(
-                    einstiegskurs = float(data["Close"].iloc[-1]),
-                    stop_loss_kurs = float(stop_loss_kurs_berechnet),
+                    einstiegskurs=letzter_close,
+                    stop_loss_kurs=stop_loss_kurs_berechnet,
                     risiko_prozent=1.0,
                     confidence=tradedecision_result["confidence"],
                     risiko_level=tradedecision_result["risk_level"]
                 )
+    
                 st.success(f"Kaufe {pos['position_size']} Aktien")
                 st.info(f"Riskamount: {pos['risk_amount']}")
                 st.info(f"Stop-Loss-Abstand: {pos['stop_loss_abstand']}")
                 st.progress(int(round(tradedecision_result["confidence"] * 100)))
-                st.info(f"Risk-Level:: {pos['risiko_level']}")
-                st.info(f"Zusammenfassung: {tradedecision_result["summary"]}")
-                st.info(f"Interpretation: {tradedecision_result["interpretation_long"]}")
-                st.warning(f"Handlungsfazit: {tradedecision_result['action_hint']}")
+    
             else:
-                st.error(f"Kein Trade")
-                st.info(f"Zusammenfassung: {tradedecision_result["summary"]}")
-                st.info(f"Interpretation: {tradedecision_result["interpretation_long"]}")
-                st.warning(f"Handlungsfazit: {tradedecision_result['action_hint']}")
+                # Für SELL/WAIT/HOLD/REDUCE etc.: keine Positionsgröße,
+                # aber SL/TP-Vorschlag und klare Aussage
+                st.error("Kein Long-Trade (BUY) – aktuelle Entscheidung: "
+                         f"{tradedecision_result['action']}")
+                # Falls du hier Short-Trades später ausbauen willst,
+                # kannst du analog eine Positionsgröße für Short ergänzen.
+    
+            # --- Gemeinsame Anzeige: ATR-SL/TP, Regime & Decision-Kontext ---
+            st.markdown(
+                f"**ATR‑SL/TP:** "
+                f"SL = {stop_loss_kurs_berechnet:.2f} (×{sl_tp.get('sl_mult_atr', '?')} ATR), "
+                f"TP = {take_profit_kurs_berechnet:.2f} (×{sl_tp.get('tp_mult_atr', '?')} ATR), "
+                f"Regime = {regime}"
+            )
+    
+            # --- Deine Info-Boxen: immer anzeigen, unabhängig von BUY/SELL ---
+            st.info(f"Risk-Level: {tradedecision_result['risk_level']}")
+            st.info(f"Zusammenfassung: {tradedecision_result['summary']}")
+            st.info(f"Interpretation: {tradedecision_result['interpretation_long']}")
+            st.warning(f"Handlungsfazit: {tradedecision_result['action_hint']}")
+
 
         with st.container(border=True):
                 st.markdown(f"### Handelsentscheidung – Über eingestellten AUSWERTUNG TAGE mit eingestellten MINDESTKURSANSTIEG")
