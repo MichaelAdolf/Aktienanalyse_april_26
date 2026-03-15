@@ -3,7 +3,7 @@
 # ------------------------------------------------------
 
 import streamlit as st
-st.set_page_config(page_title="Aktien Dashboard", layout="wide"
+st.set_page_config(page_title="Aktien Dashboard", layout="wide")
 
 # ------------------------------------------------------
 # Funktionen Import von weiterem Skript
