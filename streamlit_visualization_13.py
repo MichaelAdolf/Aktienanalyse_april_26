@@ -436,6 +436,15 @@ def aktienseite():
         # 2️⃣ RECHTE SPALTE
         # ---------------------------------------------------------
         with st.container(border=True):
+            # Regime-spezifische ATR-Multiplikatoren aus der Zentrale
+            regime_mults = thresholds["ATR_MULTS"].get(regime, thresholds["ATR_MULTS"]["default"])
+            
+            # SL/TP berechnen – jetzt mit externen Multiplikatoren
+            sl_tp = trm.sl_tp_by_atr(
+                atr=atr,
+                position_typ=position_typ,
+                mults=regime_mults
+            )
             st.markdown(f"### Handelsentscheidung – {tradedecision_result['interpretation_short']}")
     
             # --- ATR-basierte SL/TP via TradeRiskManager ---
