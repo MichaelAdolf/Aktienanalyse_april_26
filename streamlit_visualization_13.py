@@ -148,10 +148,6 @@ def aktienseite():
     Swingtrading = SwingTrading()
     Analysten = Analystenbewertung()
     period_analyzer = PeriodAnalysis()
-    st.set_page_config(
-    page_title="Aktien Dashboard",
-    layout="wide"  # 💥 macht Seite 100% breit
-    )
     # ---------------------------------------------------------
     rsi_analysis = RSIAnalysis()
     macd_analysis = MACDAnalysis()
