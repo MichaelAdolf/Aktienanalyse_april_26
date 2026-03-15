@@ -1599,7 +1599,8 @@ class SignalGenerator:
                 "rsi_state": rsi_result.get("state"),
                 "rsi_value": rsi_result.get("value"),
                 "macd_bias": macd_result.get("bias"),
-                "adx_value": adx_result.get("value"),
+                "adx_value": adx_result.get("adx"),
+
             })
 
         return pd.DataFrame(signale)
