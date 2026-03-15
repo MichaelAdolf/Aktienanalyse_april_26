@@ -3,6 +3,7 @@
 # ------------------------------------------------------
 
 import streamlit as st
+st.set_page_config(page_title="Aktien Dashboard", layout="wide"
 
 # ------------------------------------------------------
 # Funktionen Import von weiterem Skript
@@ -19,7 +20,7 @@ from streamlit_visualization_13 import (
 
 Aktien = lade_aktien()
 if not Aktien:
-    st.warning("Datei Watchlist.txt wurde nicht gefunden oder ist leer.")
+    st.warning("Datei Watchlist.json wurde nicht gefunden oder ist leer.")
 
 # ------------------------------------------------------
 # Navigation
