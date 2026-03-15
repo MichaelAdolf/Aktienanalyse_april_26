@@ -47,7 +47,7 @@ from signals_2 import (
     analyse_kaufsignal_perioden
 )
 
-from config.thresholds import (
+from config_thresholds import (
     get_thresholds
 )
 
