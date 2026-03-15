@@ -92,39 +92,56 @@ def lade_daten_aktie(symbol: str, period="3y") -> pd.DataFrame:
 # ------------------------------------------------------
 # Lade Fundamentaldaten
 # ------------------------------------------------------
-@st.cache_data(show_spinner=False)
+
+@st.cache_data(show_spinner=False, ttl=60*60)  # 60 Minuten Cache
 def lade_fundamentaldaten(ticker_symbol):
-    ticker = yf.Ticker(ticker_symbol)
-    info = ticker.info
-    fundamentaldaten = {
-        "sector": info.get("sector", "Unknown"),
-        "kgv": info.get("trailingPE"),
-        "forward_kgv": info.get("forwardPE"),
-        "kuv": info.get("priceToSalesTrailing12Months"),
-        "kbv": info.get("priceToBook"),
-        "marge": info.get("profitMargins"),
-        "beta": info.get("beta"),
-        "roe": info.get("returnOnEquity"),
-        "debt_to_equity": info.get("debtToEquity"),
-        "revenue_growth": info.get("revenueGrowth"),
-        "earnings_growth": info.get("earningsGrowth"),
-        "Dividendenrendite": info.get("dividendYield", "N/A"),
-        "Marktkapitalisierung": info.get("marketCap", "N/A"),
-        "Gewinn je Aktie (EPS)": info.get("trailingEps", "N/A")
+    max_retries, backoff = 4, 2.0
+    last_exc = None
+    for _ in range(max_retries):
+        try:
+            ticker = yf.Ticker(ticker_symbol)
+            info = ticker.info
+            fundamentaldaten = {
+                "sector": info.get("sector", "Unknown"),
+                "kgv": info.get("trailingPE"),
+                "forward_kgv": info.get("forwardPE"),
+                "kuv": info.get("priceToSalesTrailing12Months"),
+                "kbv": info.get("priceToBook"),
+                "marge": info.get("profitMargins"),
+                "beta": info.get("beta"),
+                "roe": info.get("returnOnEquity"),
+                "debt_to_equity": info.get("debtToEquity"),
+                "revenue_growth": info.get("revenueGrowth"),
+                "earnings_growth": info.get("earningsGrowth"),
+                "Dividendenrendite": info.get("dividendYield", "N/A"),
+                "Marktkapitalisierung": info.get("marketCap", "N/A"),
+                "Gewinn je Aktie (EPS)": info.get("trailingEps", "N/A")
+            }
+            # Optional: Formatieren der Werte
+            if fundamentaldaten["Dividendenrendite"] != "N/A":
+                fundamentaldaten["Dividendenrendite (%)"] = fundamentaldaten.pop("Dividendenrendite") * 100
+            if fundamentaldaten["Marktkapitalisierung"] != "N/A":
+                mkt = fundamentaldaten["Marktkapitalisierung"]
+                if isinstance(mkt, (int, float)):
+                    if mkt > 1e12:
+                        fundamentaldaten["Marktkapitalisierung"] = f"{mkt / 1e12:.2f} Bio."
+                    elif mkt > 1e9:
+                        fundamentaldaten["Marktkapitalisierung"] = f"{mkt / 1e9:.2f} Mrd."
+                    elif mkt > 1e6:
+                        fundamentaldaten["Marktkapitalisierung"] = f"{mkt / 1e6:.2f} Mio."
+            return fundamentaldaten
+        except Exception as e:
+            last_exc = e
+            time.sleep(backoff)
+            backoff *= 1.8
+    # Fallback: gib leere/Unknown-Werte zurück statt harten Abbruch
+    st.warning(f"Fundamentaldaten für {ticker_symbol} derzeit nicht verfügbar: {last_exc}")
+    return {
+        "sector": "Unknown", "kgv": None, "forward_kgv": None, "kuv": None,
+        "kbv": None, "marge": None, "beta": None, "roe": None,
+        "debt_to_equity": None, "revenue_growth": None, "earnings_growth": None,
+        "Dividendenrendite": "N/A", "Marktkapitalisierung": "N/A", "Gewinn je Aktie (EPS)": "N/A"
     }
-    # Optional: Formatieren der Werte
-    if fundamentaldaten["Dividendenrendite"] != "N/A":
-        fundamentaldaten["Dividendenrendite (%)"] = fundamentaldaten.pop("Dividendenrendite") * 100
-    if fundamentaldaten["Marktkapitalisierung"] != "N/A":
-        mkt = fundamentaldaten["Marktkapitalisierung"]
-        if isinstance(mkt, (int, float)):
-            if mkt > 1e12:
-                fundamentaldaten["Marktkapitalisierung"] = f"{mkt / 1e12:.2f} Bio."
-            elif mkt > 1e9:
-                fundamentaldaten["Marktkapitalisierung"] = f"{mkt / 1e9:.2f} Mrd."
-            elif mkt > 1e6:
-                fundamentaldaten["Marktkapitalisierung"] = f"{mkt / 1e6:.2f} Mio."
-    return fundamentaldaten
 
 def klassifiziere_aktie(symbol, data, fundamentaldaten):
     ticker = yf.Ticker(symbol)
