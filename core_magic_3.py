@@ -9,6 +9,7 @@ from ta.trend import ADXIndicator
 from ta.momentum import StochasticOscillator
 import json
 from pathlib import Path
+import time
 
 # ------------------------------------------------------
 # Aktien aus der definierten Watchlist laden
@@ -49,12 +50,44 @@ def save_watchlist_json(watchlist, pfad="Watchlist.json"):
 # Lade Daten
 # ------------------------------------------------------
 @st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=60*15)  # 15 Minuten Cache
 def lade_daten_aktie(symbol: str, period="3y") -> pd.DataFrame:
-    ticker = yf.Ticker(symbol)
-    data = ticker.history(period=period)
-    if data.empty:
-        raise ValueError(f"Keine Daten für {symbol} gefunden.")
-    return data
+    """
+    Robuster Loader mit Retry/Backoff gegen Rate-Limits.
+    Cache via Streamlit: 15 Min TTL.
+    """
+    max_retries = 5
+    backoff_sec = 2.0
+    last_exception = None
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            ticker = yf.Ticker(symbol)
+            # Timeout-Guard: yfinance hat keinen expliziten Timeout-Param,
+            # aber ein seltener Hänger kommt vor; wir halten nur Backoff/Retry bereit.
+            data = ticker.history(period=period)
+
+            # Fallback: manche Symbole liefern leer für lange Perioden
+            if data is None or data.empty:
+                # Probiere einen kürzeren Zeitraum, um temporär wenigstens etwas zu zeigen
+                if period != "1y":
+                    data = ticker.history(period="1y")
+            if data is not None and not data.empty:
+                return data
+
+            # Wenn leer, als Fehler behandeln, damit Retry greift
+            raise ValueError(f"Keine Daten für {symbol} (period={period}) erhalten.")
+
+        except Exception as e:
+            last_exception = e
+            # Bei Rate-Limit oder Netzfehlern mit Backoff erneut
+            time.sleep(backoff_sec)
+            backoff_sec *= 1.8  # exponentiell
+
+    # Nach max_retries: sauberes Fehlersignal
+    raise RuntimeError(
+        f"Fehler beim Laden von {symbol} nach {max_retries} Versuchen: {last_exception}"
+    )
 
 # ------------------------------------------------------
 # Lade Fundamentaldaten
