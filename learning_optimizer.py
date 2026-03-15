@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 import itertools, json
 from typing import Dict, Any, List, Tuple
@@ -8,7 +7,7 @@ from pathlib import Path
 
 # --- Projekt-Imports (nutzen deine vorhandenen Funktionen/Analyzer) ---
 from core_magic_3 import lade_daten_aktie, berechne_indikatoren, lade_fundamentaldaten  # [3](https://www.nasdaq.com/articles/10-top-growth-stocks-2026)
-from config.thresholds import get_thresholds, load_learned, save_learned                # wird in Schritt 1 bereitgestellt
+from config_thresholds import get_thresholds, load_learned, save_learned                # wird in Schritt 1 bereitgestellt
 from SwingtradingSignale import (                                                       # [2](https://www.investing.com/academy/stock-picks/top-ten-2026-stocks/)
     RSIAnalysis, MACDAnalysis, ADXAnalysis,
     MarketRegimeAnalysis, TradeDecisionEngine, TradeRiskManager
