@@ -1510,23 +1510,24 @@ class TradeRiskManager:
         self.einstiegskurs = float(einstiegskurs)
         self.regime = (regime or "").lower()
 
-    def sl_tp_by_atr(self, atr: float, position_typ: str = "long") -> dict:
-        """
-        ATR-basierte SL/TP-Ermittlung pro Market-Regime.
-        :param atr: aktueller ATR-Wert (gleiche Preis-Einheit wie Kurs)
-        :param position_typ: "long" oder "short"
-        """
-        # Default-Multiplikatoren
+    
+    def sl_tp_by_atr(self, atr: float, position_typ: str = "long", mults: dict | None = None) -> dict:
+        # Default (falls keine Mults übergeben)
         sl_mult = 1.2
         tp_mult = 1.8
-
-        if self.regime == "trend_market":
-            sl_mult, tp_mult = 1.5, 3.0
-        elif self.regime == "range_market":
-            sl_mult, tp_mult = 1.0, 1.5
-        elif self.regime in ("late_trend", "transition_phase"):
-            sl_mult, tp_mult = 1.2, 1.8
-
+    
+        # 1) bevorzugt: extern übergebene Multiplikatoren nutzen
+        if mults and "sl" in mults and "tp" in mults:
+            sl_mult, tp_mult = float(mults["sl"]), float(mults["tp"])
+        else:
+            # 2) fallback: interne Regime-Defaults
+            if self.regime == "trend_market":
+                sl_mult, tp_mult = 1.5, 3.0
+            elif self.regime == "range_market":
+                sl_mult, tp_mult = 1.0, 1.5
+            elif self.regime in ("late_trend", "transition_phase"):
+                sl_mult, tp_mult = 1.2, 1.8
+        
         atr = float(atr or 0.0)
         if atr <= 0:
             # Fallback: 2%/4% in absoluten Notfällen
