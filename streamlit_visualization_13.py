@@ -44,7 +44,11 @@ from core_magic_3 import (
 )
 
 from signals_2 import (
-    analyse_kaufsignal_perioden,
+    analyse_kaufsignal_perioden
+)
+
+from config.thresholds import (
+    get_thresholds
 )
 
 def go_to(page_name):
@@ -148,9 +152,22 @@ def aktienseite():
     Swingtrading = SwingTrading()
     Analysten = Analystenbewertung()
     period_analyzer = PeriodAnalysis()
+
     # ---------------------------------------------------------
-    rsi_analysis = RSIAnalysis()
-    macd_analysis = MACDAnalysis()
+
+    rsi_analysis = RSIAnalysis(
+        oversold=thresholds["RSI"]["oversold"],
+        overbought=thresholds["RSI"]["overbought"],
+        bullish_floor=thresholds["RSI"]["bullish_floor"],
+        bearish_ceiling=thresholds["RSI"]["bearish_ceiling"],
+    )
+
+    macd_analysis = MACDAnalysis()  # unverändert
+    adx_analysis = ADXAnalysis(
+        weak_trend=thresholds["ADX"]["weak_trend"],
+        strong_trend=thresholds["ADX"]["strong_trend"],
+        extreme_trend=thresholds["ADX"]["extreme_trend"],
+    )
     macd_zwei_analysis = MACDAnalysis_Confirmations()
     adx_analysis = ADXAnalysis()
     ma_analysis = MAAnalysis()
@@ -169,6 +186,9 @@ def aktienseite():
     # ---------------------------------------------------------  
     fundamentaldaten = lade_fundamentaldaten(symbol)
     data_fund = fundamental_alanalyzer.fundamental_analyse(fundamentaldaten, symbol)
+    sector = fundamentaldaten.get("sector")  # kann "Unknown" sein
+    thresholds = get_thresholds(symbol=symbol, sector=sector)
+
 
     # ---------------------------------------------------------
     # Import der Analysten Daten
