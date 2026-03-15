@@ -143,61 +143,72 @@ def lade_fundamentaldaten(ticker_symbol):
         "Dividendenrendite": "N/A", "Marktkapitalisierung": "N/A", "Gewinn je Aktie (EPS)": "N/A"
     }
 
+
 def klassifiziere_aktie(symbol, data, fundamentaldaten):
-    ticker = yf.Ticker(symbol)
-    info = ticker.info
+    """
+    Klassifiziert die Aktie ohne weitere Netzwerkaufrufe:
+    - nutzt nur 'fundamentaldaten' (ggf. leer/Unknown) und 'data'
+    - berechnet Volatilität & Momentum aus Kursdaten
+    """
 
-    sector = info.get("sector")
-    industry = info.get("industry")
-    marketcap = ticker.fast_info.get("market_cap") or info.get("marketCap")
+    # --- 1) Stammdaten/Grundlagen aus 'fundamentaldaten' (keine yfinance-Calls hier!)
+    sector   = fundamentaldaten.get("sector")                # z.B. "Technology" oder "Unknown"
+    industry = fundamentaldaten.get("industry")              # kann fehlen -> None
 
-    kgv = fundamentaldaten.get("kgv")
-    div = fundamentaldaten.get("Dividendenrendite (%)")
+    # Marketcap best-effort aus Fundamentaldaten (kann formatiert sein: "1.23 Mrd.")
+    marketcap = None
+    mkt_raw = fundamentaldaten.get("Marktkapitalisierung")
+    if isinstance(mkt_raw, (int, float)):
+        marketcap = mkt_raw
+    elif isinstance(mkt_raw, str):
+        import re
+        txt = mkt_raw.replace(" ", "")
+        nums = re.findall(r"[0-9]+(?:[.,][0-9]+)?", txt)
+        if nums:
+            val = float(nums[0].replace(",", "."))
+            if "Bio" in txt:
+                marketcap = val * 1e12
+            elif "Mrd" in txt:
+                marketcap = val * 1e9
+            elif "Mio" in txt:
+                marketcap = val * 1e6
+
+    # Bewertungs-/Wachstums-Kennzahlen aus 'lade_fundamentaldaten' (kleingeschriebene Keys!)
+    kgv    = fundamentaldaten.get("kgv")
+    div    = fundamentaldaten.get("Dividendenrendite (%)")   # wurde dort bereits in % umgerechnet
     umsatz = fundamentaldaten.get("revenue_growth")
     gewinn = fundamentaldaten.get("earnings_growth")
 
-    if "ATR" in data.columns:
-        volatilitaet = data["ATR"].iloc[-1] / data["Close"].iloc[-1]
+    # --- 2) Volatilität & Momentum aus Kursdaten
+    if "ATR" in data.columns and len(data) > 20:
+        volatilitaet = data["ATR"].iloc[-1] / max(1e-9, data["Close"].iloc[-1])
     else:
-        volatilitaet = 0.02
+        volatilitaet = 0.02  # konservativer Fallback
 
-    momentum_20 = (data["Close"].iloc[-1] - data["Close"].iloc[-20]) / data["Close"].iloc[-20]
+    if len(data) > 20:
+        momentum_20 = (data["Close"].iloc[-1] - data["Close"].iloc[-20]) / data["Close"].iloc[-20]
+    else:
+        momentum_20 = 0.0
 
-    profil_scores = {
-        "Growth": 0,
-        "Value": 0,
-        "Zyklisch": 0,
-        "Defensiv": 0,
-    }
-    trading_scores = {
-        "Volatil": 0,
-        "Momentum": 0
-    }
+    # --- 3) Scoring
+    profil_scores = {"Growth": 0, "Value": 0, "Zyklisch": 0, "Defensiv": 0}
+    trading_scores = {"Volatil": 0, "Momentum": 0}
 
     # Growth
-    if umsatz and umsatz > 0.10:
-        profil_scores["Growth"] += 2
-    if gewinn and gewinn > 0.10:
-        profil_scores["Growth"] += 2
-    if volatilitaet > 0.03:
-        profil_scores["Growth"] += 1
-    if sector in ["Technology", "Consumer Cyclical"]:
-        profil_scores["Growth"] += 1
-    if momentum_20 > 0.10:
-        profil_scores["Growth"] += 1
+    if umsatz and umsatz > 0.10: profil_scores["Growth"] += 2
+    if gewinn and gewinn > 0.10: profil_scores["Growth"] += 2
+    if volatilitaet > 0.03:      profil_scores["Growth"] += 1
+    if sector in ["Technology", "Consumer Cyclical"]: profil_scores["Growth"] += 1
+    if momentum_20 > 0.10:       profil_scores["Growth"] += 1
 
     # Value
-    if kgv and kgv < 15:
-        profil_scores["Value"] += 2
-    if div and div > 2:
-        profil_scores["Value"] += 1
-    if volatilitaet < 0.02:
-        profil_scores["Value"] += 1
-    if sector in ["Financial Services", "Industrial"]:
-        profil_scores["Value"] += 1
+    if kgv and kgv < 15:         profil_scores["Value"] += 2
+    if div and div > 2:          profil_scores["Value"] += 1
+    if volatilitaet < 0.02:      profil_scores["Value"] += 1
+    if sector in ["Financial Services", "Industrial"]: profil_scores["Value"] += 1
 
-    # Zyklisch
-    if sector in ["Automobil", "Industrials", "Materials"]:
+    # Zyklisch (vereinheitliche Sektornamen bei Bedarf)
+    if sector in ["Automobil", "Automotive", "Industrials", "Materials"]:
         profil_scores["Zyklisch"] += 2
     if volatilitaet > 0.025:
         profil_scores["Zyklisch"] += 1
@@ -210,33 +221,19 @@ def klassifiziere_aktie(symbol, data, fundamentaldaten):
     if div and div > 2.5:
         profil_scores["Defensiv"] += 1
 
-    # Volatil
-    if volatilitaet > 0.05:
-        trading_scores["Volatil"] += 3
-    if marketcap and marketcap < 2e9:
-        trading_scores["Volatil"] += 2
+    # Trading-Status
+    if volatilitaet > 0.05:          trading_scores["Volatil"] += 3
+    if marketcap and marketcap < 2e9: trading_scores["Volatil"] += 2
+    if momentum_20 > 0.15:           trading_scores["Momentum"] += 2
+    if momentum_20 > 0.25:           trading_scores["Momentum"] += 2
+    if volatilitaet > 0.03:          trading_scores["Momentum"] += 1
 
-    # Momentum
-    if momentum_20 > 0.15:
-        trading_scores["Momentum"] += 2
-    if momentum_20 > 0.25:
-        trading_scores["Momentum"] += 2
-    if volatilitaet > 0.03:
-        trading_scores["Momentum"] += 1
+    # --- 4) Ergebnis
+    max_profil = max(profil_scores.values()) if profil_scores else 0
+    profil = "Keine" if max_profil == 0 else max(profil_scores, key=profil_scores.get)
 
-    # Profile filtern und als String zusammenfassen
-    max_profil_score = max(profil_scores.values())
-    if max_profil_score == 0:
-        profil = "Keine"
-    else:
-        profil = max(profil_scores, key=profil_scores.get)
-
-    # Trading-Status filtern und als String zusammenfassen
-    max_trading_score = max(trading_scores.values())
-    if max_trading_score == 0:
-        trading_status = "Keine"
-    else:
-        trading_status = max(trading_scores, key=trading_scores.get)
+    max_trading = max(trading_scores.values()) if trading_scores else 0
+    trading_status = "Keine" if max_trading == 0 else max(trading_scores, key=trading_scores.get)
 
     return {
         "Sektor": sector,
@@ -246,6 +243,7 @@ def klassifiziere_aktie(symbol, data, fundamentaldaten):
         "Profil_Scores": profil_scores,
         "Trading_Scores": trading_scores
     }
+
 
 def lade_analystenbewertung(symbol):
     ticker = yf.Ticker(symbol)
