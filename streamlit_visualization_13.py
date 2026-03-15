@@ -348,7 +348,7 @@ def aktienseite():
                 with col12:
                     st.warning(f"Risiko: {macd_interp['risk']}")
                 st.info(f"Handlungsfazit: {macd_interp['typical_action']}")
-                st.progress(macd_result["strength"])
+                st.progress(int(round(macd_result["strength"] * 100)))
 
         col1, col2 = st.columns([1,1])
         with col2:
@@ -431,7 +431,7 @@ def aktienseite():
                 st.success(f"Kaufe {pos['position_size']} Aktien")
                 st.info(f"Riskamount: {pos['risk_amount']}")
                 st.info(f"Stop-Loss-Abstand: {pos['stop_loss_abstand']}")
-                st.progress(tradedecision_result["confidence"])
+                st.progress(int(round(tradedecision_result["confidence"] * 100)))
                 st.info(f"Risk-Level:: {pos['risiko_level']}")
                 st.info(f"Zusammenfassung: {tradedecision_result["summary"]}")
                 st.info(f"Interpretation: {tradedecision_result["interpretation_long"]}")
@@ -453,7 +453,7 @@ def aktienseite():
             st.info(f"Zusammenfassung: {tradedecision_result['summary']}")
             st.info(f"Interpretation: {tradedecision_result["interpretation_long"]}")
             st.warning(f"Handlungsfazit: {tradedecision_result['action_hint']}")
-            st.progress(tradedecision_result["confidence"])
+            st.progress(int(round(tradedecision_result["confidence"] * 100)))
         
         col1, col2 = st.columns([1,1])
         # ---------------------------------------------------------
@@ -467,7 +467,7 @@ def aktienseite():
                 st.info(f"Zusammenfassung: {market_result['summary']}")
                 st.info(f"Interpretation: {market_result['interpretation_long']}")
                 st.warning(f"Handlungsfazit: {market_result['action_hint']}")
-                st.progress(market_result["confidence"])
+                st.progress(int(round(market_result["confidence"] * 100)))
 
         with col2:
             with st.container(border=True):
