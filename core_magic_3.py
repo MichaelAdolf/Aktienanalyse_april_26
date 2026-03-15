@@ -101,10 +101,10 @@ def klassifiziere_aktie(symbol, data, fundamentaldaten):
     industry = info.get("industry")
     marketcap = ticker.fast_info.get("market_cap") or info.get("marketCap")
 
-    kgv = fundamentaldaten.get("KGV")
+    kgv = fundamentaldaten.get("kgv")
     div = fundamentaldaten.get("Dividendenrendite (%)")
-    umsatz = fundamentaldaten.get("Umsatzwachstum")
-    gewinn = fundamentaldaten.get("Gewinnwachstum")
+    umsatz = fundamentaldaten.get("revenue_growth")
+    gewinn = fundamentaldaten.get("earnings_growth")
 
     if "ATR" in data.columns:
         volatilitaet = data["ATR"].iloc[-1] / data["Close"].iloc[-1]
