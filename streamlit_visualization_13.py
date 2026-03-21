@@ -235,6 +235,7 @@ def aktienseite():
         ma10 = data["MA10"].iloc[-1]
     )
     market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result)
+    rsi_result["trend_bias"] = thresholds["RSI"]["trend_bias"]
     entryquality_result = entryquality_analysis.analyse(bollinger_result, stochastic_result, market_result, ma_result, atr_result)
     tradedecision_result = trade_decision.decide(market_result, rsi_result, macd_result, adx_result)
     swingsignal_analysed = swingsignal_analysis.run_analysis(data, Auswertung_tage, min_veraenderung, market_result, rsi_result, macd_result, adx_result)
