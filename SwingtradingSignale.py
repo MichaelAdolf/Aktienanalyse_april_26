@@ -1312,7 +1312,9 @@ class TradeDecisionEngine:
 
             summary = "Ausgeprägter Trendmarkt – Trendfolge empfohlen"
 
-            if macd["bias"] == "bullish" and rsi["value"] > 50:
+            bias_level = rsi.get("trend_bias", 50)  # Fallback = 50, falls nicht gesetzt
+
+            if macd["bias"] == "bullish" and rsi["value"] > bias_level:
                 action = "BUY"
                 position_type = "trend_follow"
                 confidence = market["confidence"]
@@ -1324,8 +1326,8 @@ class TradeDecisionEngine:
                     "laut MACD und RSI. Dies erhöht die Wahrscheinlichkeit für eine Fortsetzung des Trends."
                 )
                 action_hint = "Long-Position eröffnen und Trend folgen"
-
-            elif macd["bias"] == "bearish" and rsi["value"] < 50:
+            
+            elif macd["bias"] == "bearish" and rsi["value"] < bias_level:
                 action = "SELL"
                 position_type = "trend_follow"
                 confidence = market["confidence"]
