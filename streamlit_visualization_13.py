@@ -54,6 +54,10 @@ from config_thresholds import (
 def go_to(page_name):
     st.session_state.page = page_name
 
+from learning_optimizer import (
+    optimize_symbol
+)
+
 def home_page():
     watchlist = lade_aktien()
     # --------------------------------------------------
@@ -183,7 +187,6 @@ def aktienseite():
         extreme_trend=thresholds["ADX"]["extreme_trend"],
     )
     macd_zwei_analysis = MACDAnalysis_Confirmations()
-    # adx_analysis = ADXAnalysis()
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
     stochastic_analysis = StochasticAnalysis()
@@ -263,7 +266,6 @@ def aktienseite():
         with st.container(border=True):
                 # ... dein bestehender Inhalt ...
                 # --- Kalibrierungs-Button ---
-                from learning_optimizer import optimize_symbol  # neuer Import
                 if st.button("🔁 Parameter für dieses Symbol rekalibrieren"):
                     with st.spinner("Kalibriere Parameter (kleiner Grid-Search)…"):
                         try:
@@ -454,38 +456,26 @@ def aktienseite():
     
     
     with tab_handel:
-        # ---------------------------------------------------------
-        # 2️⃣ RECHTE SPALTE
-        # ---------------------------------------------------------
         with st.container(border=True):
             st.markdown(f"### Handelsentscheidung – {tradedecision_result['interpretation_short']}")
     
             # --- ATR-basierte SL/TP via TradeRiskManager ---
             atr = float(data["ATR"].iloc[-1])
             letzter_close = float(data["Close"].iloc[-1])
-            regime = market_result.get("market_regime")  # "trend_market", "range_market", etc.
+            regime = market_result.get("market_regime")  # "trend_market", "range_market", ...
     
-            # Regime-spezifische ATR-Multiplikatoren aus der Zentrale
+            # Multiplikatoren aus der Zentrale
             regime_mults = thresholds["ATR_MULTS"].get(regime, thresholds["ATR_MULTS"]["default"])
     
-            # Wichtig: TradeRiskManager importieren
             from SwingtradingSignale import TradeRiskManager
-    
-            # Richtung aus Entscheidung ableiten
             position_typ = "long" if tradedecision_result["action"] == "BUY" else "short"
     
-            # SL/TP berechnen (ATR-basiert + Multiplikatoren aus der Zentrale)
             trm = TradeRiskManager(einstiegskurs=letzter_close, regime=regime)
-            sl_tp = trm.sl_tp_by_atr(
-                atr=atr,
-                position_typ=position_typ,
-                mults=regime_mults
-            )
+            sl_tp = trm.sl_tp_by_atr(atr=atr, position_typ=position_typ, mults=regime_mults)
     
             stop_loss_kurs_berechnet = sl_tp["stop_loss"]
             take_profit_kurs_berechnet = sl_tp["take_profit"]
     
-            # Positionsgröße nur bei BUY (Long) berechnen und anzeigen
             if tradedecision_result["action"] == "BUY":
                 sizer = PositionSizer(konto_groesse=10000)
                 pos = sizer.berechne_positionsgroesse(
@@ -495,26 +485,20 @@ def aktienseite():
                     confidence=tradedecision_result["confidence"],
                     risiko_level=tradedecision_result["risk_level"]
                 )
-    
                 st.success(f"Kaufe {pos['position_size']} Aktien")
                 st.info(f"Riskamount: {pos['risk_amount']}")
                 st.info(f"Stop-Loss-Abstand: {pos['stop_loss_abstand']}")
                 st.progress(int(round(tradedecision_result["confidence"] * 100)))
             else:
-                # Für SELL/WAIT/HOLD/REDUCE etc.: keine Positionsgröße,
-                # aber SL/TP-Vorschlag und klare Aussage
                 st.error("Kein Long-Trade (BUY) – aktuelle Entscheidung: "
                          f"{tradedecision_result['action']}")
     
-            # --- Gemeinsame Anzeige: ATR-SL/TP, Regime & Decision-Kontext ---
             st.markdown(
                 f"**ATR‑SL/TP:** "
                 f"SL = {stop_loss_kurs_berechnet:.2f} (×{sl_tp.get('sl_mult_atr', '?')} ATR), "
                 f"TP = {take_profit_kurs_berechnet:.2f} (×{sl_tp.get('tp_mult_atr', '?')} ATR), "
                 f"Regime = {regime}"
             )
-    
-            # --- Info-Boxen: immer anzeigen, unabhängig von BUY/SELL ---
             st.info(f"Risk-Level: {tradedecision_result['risk_level']}")
             st.info(f"Zusammenfassung: {tradedecision_result['summary']}")
             st.info(f"Interpretation: {tradedecision_result['interpretation_long']}")
