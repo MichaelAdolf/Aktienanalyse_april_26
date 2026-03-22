@@ -1621,6 +1621,7 @@ class TradeRiskManager:
 class SignalGenerator:
 
     def __init__(self):
+        self.thresholds = thresholds
         self.engine = TradeDecisionEngine()
 
     def generate_signals(
@@ -1630,17 +1631,32 @@ class SignalGenerator:
     ) -> pd.DataFrame:
 
         signale = []
-        rsi_analysis = RSIAnalysis()
-        macd_analysis = MACDAnalysis()
-        adx_analysis = ADXAnalysis()
-        ma_analysis = MAAnalysis()
-        market_analysis = MarketRegimeAnalysis()
+        thr = self.thresholds
+        rsi_analysis = RSIAnalysis(
+            oversold=thr["RSI"]["oversold"],
+            overbought=thr["RSI"]["overbought"],
+            bullish_floor=thr["RSI"]["bullish_floor"],
+            bearish_ceiling=thr["RSI"]["bearish_ceiling"],
+        )
+        
+        macd_analysis = MACDAnalysis()  # unverändert
+        
+        adx_analysis = ADXAnalysis(
+            weak_trend=thr["ADX"]["weak_trend"],
+            strong_trend=thr["ADX"]["strong_trend"],
+            extreme_trend=thr["ADX"]["extreme_trend"],
+        )
+
+ma_analysis = MAAnalysis()
+market_analysis = MarketRegimeAnalysis()
+
 
         for i in range(min_len_window, len(full_data)):
             datum = full_data.index[i]
             fenster = full_data.iloc[:i+1]  # Nur bis zum aktuellen Tag i
 
             rsi_result = rsi_analysis.analyse(fenster)
+            rsi_result["trend_bias"] = thr["RSI"]["trend_bias"]
             macd_result = macd_analysis.analyse(fenster)
             adx_result = adx_analysis.analyse(fenster)
             ma_result = ma_analysis.analyse(fenster)
@@ -1726,9 +1742,11 @@ class BuySignalEvaluator:
 
 class SwingSignalService:
 
-    def __init__(self):
-        self.generator = SignalGenerator()
-        self.evaluator = BuySignalEvaluator()
+    
+    def __init__(self, thresholds):
+            self.generator = SignalGenerator(thresholds)
+            self.evaluator = BuySignalEvaluator()
+
 
     def run_analysis(
         self,
