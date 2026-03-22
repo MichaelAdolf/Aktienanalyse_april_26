@@ -86,16 +86,20 @@ def _merge(base: Dict[str, Any], override: Dict[str, Any]) -> None:
 
 # --- Strategie-Profile (relative Offsets, NICHT persistent) ---
 PROFILES = {
-    "Conservative": {},  # keine Abweichung von get_thresholds(...)
+    "Conservative": {},
+
+    # etwas früher rein, aber hochwertige Signale bleiben
     "Balanced": {
-        "RSI": {"trend_bias": -2},
-        "ADX": {"strong_trend": -1},
+        "RSI": {"trend_bias": -6},
+        "ADX": {"strong_trend": -2},
         "ATR_MULTS": {"range_market": {"tp": +0.2}},
     },
+
+    # deutlich mehr Trades, trotzdem marktkonform
     "Aggressive": {
-        "RSI": {"trend_bias": -4},
-        "ADX": {"strong_trend": -2},
-        "ATR_MULTS": {"range_market": {"tp": +0.3}},
+        "RSI": {"trend_bias": -10},
+        "ADX": {"strong_trend": -4},
+        "ATR_MULTS": {"range_market": {"tp": +0.4}},
     },
 }
 
