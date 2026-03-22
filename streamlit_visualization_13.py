@@ -118,11 +118,67 @@ def home_page():
     # ------------------------------------------------------
     st.title("📈 Aktien-Dashboard")
     st.write("Wähle eine Aktie:")
+    
     for i, w in enumerate(watchlist):
         name = w["name"]
         symbol = w["symbol"]
-        if st.button(f"{name} ({symbol})", key=f"button_{symbol}_{i}"):
-            st.session_state.page = (name, symbol)  # Tuple speichern
+    
+        # Layout: 2-Spalten (Button links, Ampel rechts)
+        col_button, col_signal = st.columns([4, 1])
+    
+        with col_button:
+            if st.button(f"{name} ({symbol})", key=f"button_{symbol}_{i}"):
+                st.session_state.page = (name, symbol)
+    
+        with col_signal:
+            try:
+                # --- Daten (kleiner Zeitraum genügt) ---
+                data = lade_daten_aktie(symbol, period="6mo")
+                data = berechne_indikatoren(data)
+    
+                # --- thresholds & aktuelles Profil laden ---
+                # Profil kommt aus Sidebar (aktienseite), aber hier nehmen wir Conservative als Basismodus
+                thresholds = get_thresholds(symbol, None)
+                thresholds = apply_profile(thresholds, "Conservative")  # willst du, kann ich ersetzen durch aktuelles Profil
+    
+                # --- Analyzer ---
+                rsi = RSIAnalysis(
+                    oversold=thresholds["RSI"]["oversold"],
+                    overbought=thresholds["RSI"]["overbought"],
+                    bullish_floor=thresholds["RSI"]["bullish_floor"],
+                    bearish_ceiling=thresholds["RSI"]["bearish_ceiling"],
+                ).analyse(data)
+    
+                macd = MACDAnalysis().analyse(data)
+                adx = ADXAnalysis(
+                    weak_trend=thresholds["ADX"]["weak_trend"],
+                    strong_trend=thresholds["ADX"]["strong_trend"],
+                    extreme_trend=thresholds["ADX"]["extreme_trend"],
+                ).analyse(data)
+    
+                ma = MAAnalysis().analyse(data)
+    
+                # --- Market Regime ---
+                market = MarketRegimeAnalysis().analyse(rsi, macd, adx, ma)
+    
+                # --- trend_bias setzen ---
+                rsi["trend_bias"] = thresholds["RSI"]["trend_bias"]
+    
+                # --- Entscheidung ---
+                decision = TradeDecisionEngine().decide(market, rsi, macd, adx)
+                status = decision["action"]
+    
+                # Ampel
+                if status == "BUY":
+                    st.markdown("<h3 style='text-align:center;'>🟢</h3>", unsafe_allow_html=True)
+                elif status == "SELL":
+                    st.markdown("<h3 style='text-align:center;'>🔴</h3>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<h3 style='text-align:center;'>🟡</h3>", unsafe_allow_html=True)
+    
+            except:
+                st.markdown("<h3 style='text-align:center;'>⚠️</h3>", unsafe_allow_html=True)
+
 
 def aktienseite(): 
     name, symbol = st.session_state.page
