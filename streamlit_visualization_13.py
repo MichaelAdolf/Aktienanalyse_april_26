@@ -198,7 +198,7 @@ def aktienseite():
     atr_analysis = ATRQualityAnalysis()
     entryquality_analysis = EntryQualityAnalysis()
     trade_decision = TradeDecisionEngine()
-    swingsignal_analysis = SwingSignalService()
+    swingsignal_analysis = SwingSignalService(thresholds)
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
 
