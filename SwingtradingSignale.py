@@ -1620,7 +1620,7 @@ class TradeRiskManager:
     
 class SignalGenerator:
 
-    def __init__(self):
+    def __init__(self, thresholds):
         self.thresholds = thresholds
         self.engine = TradeDecisionEngine()
 
