@@ -48,7 +48,8 @@ from signals_2 import (
 )
 
 from config_thresholds import (
-    get_thresholds
+    get_thresholds,
+    apply_profile
 )
 
 def go_to(page_name):
@@ -170,6 +171,9 @@ def aktienseite():
 
     # thresholds = get_thresholds(symbol=symbol, sector=sector)
     thresholds = get_thresholds(symbol if use_auto else None, sector)  # learned aus/an
+    strategie = st.sidebar.selectbox("Strategie-Profil", ["Conservative", "Balanced", "Aggressive"], index=0)
+    thresholds = apply_profile(thresholds, strategie)
+
 
     # ---------------------------------------------------------
     
