@@ -83,3 +83,50 @@ def _merge(base: Dict[str, Any], override: Dict[str, Any]) -> None:
             _merge(base[k], v)
         else:
             base[k] = v
+
+# --- Strategie-Profile (relative Offsets, NICHT persistent) ---
+PROFILES = {
+    "Conservative": {},  # keine Abweichung von get_thresholds(...)
+    "Balanced": {
+        "RSI": {"trend_bias": -2},
+        "ADX": {"strong_trend": -1},
+        "ATR_MULTS": {"range_market": {"tp": +0.2}},
+    },
+    "Aggressive": {
+        "RSI": {"trend_bias": -4},
+        "ADX": {"strong_trend": -2},
+        "ATR_MULTS": {"range_market": {"tp": +0.3}},
+    },
+}
+
+def _clamp(x, lo, hi):
+    return max(lo, min(hi, x))
+
+def apply_profile(thr: Dict[str, Any], profile_name: str) -> Dict[str, Any]:
+    """
+    Wendet ein nicht-persistentes Profil (Conservative/Balanced/Aggressive) auf 'thr' an.
+    - Modifiziert das übergebene Dict IN-PLACE (wie bei get_thresholds-Merge).
+    - Wirkt NUR zur Laufzeit, ändert NICHT defaults/learned-Dateien.
+    """
+    profile = PROFILES.get(profile_name) or {}
+    # Rekursiv mergen (wie bei _merge), aber mit "Offset-Logik" für Zahlen
+    def _apply(base, patch):
+        for k, v in patch.items():
+            if isinstance(v, dict) and isinstance(base.get(k), dict):
+                _apply(base[k], v)
+            else:
+                # Zahlen-Offset (z. B. -2/+0.2) oder Override
+                if isinstance(v, (int, float)) and isinstance(base.get(k), (int, float)):
+                    new_val = base[k] + v
+                    # einfache Schutzkorridore:
+                    if k == "trend_bias":
+                        new_val = _clamp(new_val, 40, 60)
+                    if k == "strong_trend":
+                        new_val = _clamp(new_val, 15, 40)
+                    if k == "tp":
+                        new_val = _clamp(new_val, 1.2, 3.5)
+                    base[k] = new_val
+                else:
+                    base[k] = v
+    _apply(thr, profile)
+    return thr
