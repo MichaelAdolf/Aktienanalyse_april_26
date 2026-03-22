@@ -1043,7 +1043,7 @@ class MarketRegimeAnalysis:
         # -----------------------------
         # STRONG TREND
         # -----------------------------
-        elif adx["regime"] == "strong_trend":
+        elif adx["regime"] in ("strong_trend", "emerging_trend"):
             market_regime = "trend_market"
             trade_bias = macd["bias"]
             confidence = 0.75
@@ -1326,6 +1326,31 @@ class TradeDecisionEngine:
                     "laut MACD und RSI. Dies erhöht die Wahrscheinlichkeit für eine Fortsetzung des Trends."
                 )
                 action_hint = "Long-Position eröffnen und Trend folgen"
+
+            # --- NEU: Pullback-Buy (Balanced & Aggressive Strategie) ---
+            # Wenn RSI ein Pullback signalisiert (unterhalb Bias-Level),
+            # aber MACD bullish UND Markt in Trendphase → BUY
+            if macd["bias"] == "bullish" and rsi["value"] > bias_level - 6:
+                action = "BUY"
+                position_type = "trend_pullback"
+                reason = "Pullback im Aufwärtstrend (RSI unter Bias-Level aber MACD bullish)"
+                interpretation_short = "Kauf – Pullback im Trend"
+                interpretation_long = (
+                    "Der Markt ist im Aufwärtstrend und der RSI zeigt einen Pullback an. "
+                    "MACD bleibt bullisch, was auf einen guten Risiko-Ertrags-Moment hindeutet."
+                )
+                action_hint = "Long-Position (Pullback) eröffnen"
+                return {
+                    "action": action,
+                    "position_type": position_type,
+                    "confidence": round(market["confidence"], 2),
+                    "risk_level": "moderate",
+                    "reason": reason,
+                    "summary": summary,
+                    "interpretation_short": interpretation_short,
+                    "interpretation_long": interpretation_long,
+                    "action_hint": action_hint
+                }
             
             elif macd["bias"] == "bearish" and rsi["value"] < bias_level:
                 action = "SELL"
