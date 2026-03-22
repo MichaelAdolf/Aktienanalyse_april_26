@@ -1628,7 +1628,7 @@ class SignalGenerator:
         self,
         full_data: pd.DataFrame,
         min_len_window: int = 20
-    ) -> pd.DataFrame:
+        ) -> pd.DataFrame:
 
         signale = []
         thr = self.thresholds
@@ -1647,8 +1647,8 @@ class SignalGenerator:
             extreme_trend=thr["ADX"]["extreme_trend"],
         )
 
-ma_analysis = MAAnalysis()
-market_analysis = MarketRegimeAnalysis()
+        ma_analysis = MAAnalysis()
+        market_analysis = MarketRegimeAnalysis()
 
 
         for i in range(min_len_window, len(full_data)):
