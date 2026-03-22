@@ -59,6 +59,10 @@ from learning_optimizer import (
     optimize_symbol
 )
 
+from SwingtradingSignale import RSIAnalysis, MACDAnalysis, ADXAnalysis, MAAnalysis, MarketRegimeAnalysis, TradeDecisionEngine
+from core_magic_3 import lade_daten_aktie, berechne_indikatoren
+from config_thresholds import get_thresholds, apply_profile
+
 def home_page():
     watchlist = lade_aktien()
     # --------------------------------------------------
