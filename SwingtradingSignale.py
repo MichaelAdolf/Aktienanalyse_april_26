@@ -1639,64 +1639,63 @@ class SignalGenerator:
         self,
         full_data: pd.DataFrame,
         min_len_window: int = 20
-        ) -> pd.DataFrame:
-
+    ) -> pd.DataFrame:
+    
         signale = []
         thr = self.thresholds
+    
         rsi_analysis = RSIAnalysis(
             oversold=thr["RSI"]["oversold"],
             overbought=thr["RSI"]["overbought"],
             bullish_floor=thr["RSI"]["bullish_floor"],
             bearish_ceiling=thr["RSI"]["bearish_ceiling"],
         )
-        
-        macd_analysis = MACDAnalysis()  # unverändert
-        
+    
+        macd_analysis = MACDAnalysis()
         adx_analysis = ADXAnalysis(
             weak_trend=thr["ADX"]["weak_trend"],
             strong_trend=thr["ADX"]["strong_trend"],
             extreme_trend=thr["ADX"]["extreme_trend"],
         )
-
         ma_analysis = MAAnalysis()
         market_analysis = MarketRegimeAnalysis()
-
-
+    
+        action_map = {
+            "BUY": "🟢 Kaufen",
+            "SELL": "🔴 Verkaufen",
+            "HOLD": "🟡 Halten",
+            "WAIT": "🟡 Halten",
+            "NO_TRADE": "🟡 Halten",
+            "REDUCE": "🟡 Halten",
+        }
+    
         for i in range(min_len_window, len(full_data)):
-            datum = full_data.index[i]
-            fenster = full_data.iloc[:i+1]  # Nur bis zum aktuellen Tag i
-
+            fenster = full_data.iloc[: i + 1]
+    
             rsi_result = rsi_analysis.analyse(fenster)
             rsi_result["trend_bias"] = thr["RSI"]["trend_bias"]
+    
             macd_result = macd_analysis.analyse(fenster)
             adx_result = adx_analysis.analyse(fenster)
             ma_result = ma_analysis.analyse(fenster)
-            market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result)
-
+    
+            market_result = market_analysis.analyse(
+                rsi_result, macd_result, adx_result, ma_result
+            )
+    
             decision = self.engine.decide(
                 market_result, rsi_result, macd_result, adx_result
             )
-            
+    
             action = decision.get("action", "HOLD")
-
-
-            action_map = {
-                "BUY": "🟢 Kaufen",
-                "SELL": "🔴 Verkaufen",
-                "HOLD": "🟡 Halten",
-                "WAIT": "🟡 Halten",
-                "NO_TRADE": "🟡 Halten",
-                "REDUCE": "🟡 Halten",
-            }
-
-            
-            signals.append({
+    
+            signale.append({
                 "Entscheidung": action_map.get(action, "🟡 Halten"),
                 "Positionstyp": decision.get("position_type", "none"),
                 "Confidence": decision.get("confidence", 0.0),
                 "RiskLevel": decision.get("risk_level", "unknown"),
             })
-
+    
         return pd.DataFrame(signale)
 
 
