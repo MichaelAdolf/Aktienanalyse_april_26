@@ -2,6 +2,42 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 
+# ------------------------------------------------------------------
+# Strategy Rules: definieren WIE aggressiv gehandelt wird
+# ------------------------------------------------------------------
+
+STRATEGY_RULES = {
+    "Conservative": {
+        "allowed_buy_types": ["trend_breakout"],
+        "macd_mode": "strict",
+        "allow_emerging_trend": False,
+    },
+    "Balanced": {
+        "allowed_buy_types": ["trend_breakout", "trend_pullback"],
+        "macd_mode": "normal",
+        "allow_emerging_trend": True,
+    },
+    "Aggressive": {
+        "allowed_buy_types": ["trend_breakout", "trend_pullback", "momentum_reentry"],
+        "macd_mode": "loose",
+        "allow_emerging_trend": True,
+    },
+}
+
+
+def macd_allows_entry(macd, mode):
+    if mode == "strict":
+        return macd["bias"] == "bullish"
+
+    if mode == "normal":
+        return macd["histogram"] > 0
+
+    if mode == "loose":
+        return macd["histogram"] > -0.02 and macd["histogram_trend"] > 0
+
+    return False
+
+
 class RSIAnalysis:
     """
     Professionelle RSI-Regime-Analyse
@@ -984,7 +1020,8 @@ class MarketRegimeAnalysis:
         rsi: dict,
         macd: dict,
         adx: dict,
-        ma: dict
+        ma: dict,
+        strategy_rules=None
     ) -> dict:
 
         # Default-Werte
@@ -1043,7 +1080,8 @@ class MarketRegimeAnalysis:
         # -----------------------------
         # STRONG TREND
         # -----------------------------
-        elif adx["regime"] in ("strong_trend", "emerging_trend"):
+        
+        elif adx["regime"] == "strong_trend":
             market_regime = "trend_market"
             trade_bias = macd["bias"]
             confidence = 0.75
@@ -1062,6 +1100,17 @@ class MarketRegimeAnalysis:
                 confidence *= 0.8
                 interpretation_short += " | MA-Crossover gegen Trend!"
                 interpretation_long += " MA10 hat MA50 nach oben gekreuzt – Vorsicht bei Short-Einstiegen."
+                
+        # -----------------------------
+        # ENTSTEHENDER TREND
+        # -----------------------------
+        elif adx["regime"] == "emerging_trend":
+            # Strategieabhängig: Emerging Trend zulassen oder blockieren
+            if strategy_rules.get("allow_emerging_trend", False):
+                market_regime = "trend_market"
+            else:
+                market_regime = "transition_phase"
+
 
         # -----------------------------
         # EXTREMER TREND / ERSCHÖPFUNG
@@ -1232,6 +1281,7 @@ class TradeDecisionEngine:
         adx: dict
     ) -> dict:
 
+        strategy_rules = STRATEGY_RULES.get(market.get("strategy", "Conservative"))
         action = "NO_TRADE"
         position_type = None
         confidence = 0.0
@@ -1330,27 +1380,71 @@ class TradeDecisionEngine:
             # --- NEU: Pullback-Buy (Balanced & Aggressive Strategie) ---
             # Wenn RSI ein Pullback signalisiert (unterhalb Bias-Level),
             # aber MACD bullish UND Markt in Trendphase → BUY
-            if macd["bias"] == "bullish" and rsi["value"] > bias_level - 6:
-                action = "BUY"
-                position_type = "trend_pullback"
-                reason = "Pullback im Aufwärtstrend (RSI unter Bias-Level aber MACD bullish)"
-                interpretation_short = "Kauf – Pullback im Trend"
-                interpretation_long = (
-                    "Der Markt ist im Aufwärtstrend und der RSI zeigt einen Pullback an. "
-                    "MACD bleibt bullisch, was auf einen guten Risiko-Ertrags-Moment hindeutet."
-                )
-                action_hint = "Long-Position (Pullback) eröffnen"
+            
+
+            macd_ok = macd_allows_entry(macd, strategy_rules["macd_mode"])
+            
+            # -----------------------------
+            # BUY Typ 1: Trend Breakout
+            # -----------------------------
+            if (
+                "trend_breakout" in strategy_rules["allowed_buy_types"]
+                and macd_ok
+                and rsi["value"] > bias_level
+            ):
                 return {
-                    "action": action,
-                    "position_type": position_type,
-                    "confidence": round(market["confidence"], 2),
-                    "risk_level": "moderate",
-                    "reason": reason,
-                    "summary": summary,
-                    "interpretation_short": interpretation_short,
-                    "interpretation_long": interpretation_long,
-                    "action_hint": action_hint
+                    "action": "BUY",
+                    "position_type": "trend_breakout",
+                    "confidence": market["confidence"],
+                    "risk_level": "low",
+                    "reason": "Trend Breakout mit bestätigtem Momentum",
+                    "summary": "Breakout-Trendkauf",
+                    "interpretation_short": "Kauf: Trend-Breakout",
+                    "interpretation_long": "Sauberer stabiler Trend mit bestätigtem Momentum",
+                    "action_hint": "Long-Position eröffnen",
                 }
+            
+            # -----------------------------
+            # BUY Typ 2: Trend Pullback
+            # -----------------------------
+            if (
+                "trend_pullback" in strategy_rules["allowed_buy_types"]
+                and macd_ok
+                and rsi["value"] > bias_level - 8
+            ):
+                return {
+                    "action": "BUY",
+                    "position_type": "trend_pullback",
+                    "confidence": market["confidence"],
+                    "risk_level": "moderate",
+                    "reason": "Pullback im Trend",
+                    "summary": "Trend Pullback",
+                    "interpretation_short": "Früher Trend-Einstieg",
+                    "interpretation_long": "Pullback innerhalb eines intakten Trends",
+                    "action_hint": "Long-Position im Pullback eröffnen",
+                }
+            
+            # -----------------------------
+            # BUY Typ 3: Momentum Re-Entry
+            # -----------------------------
+            if (
+                "momentum_reentry" in strategy_rules["allowed_buy_types"]
+                and macd_allows_entry(macd, "loose")
+                and rsi["value"] > bias_level - 12
+            ):
+                return {
+                    "action": "BUY",
+                    "position_type": "momentum_reentry",
+                    "confidence": market["confidence"] * 0.8,
+                    "risk_level": "high",
+                    "reason": "Momentum-Reentry",
+                    "summary": "Früher Momentum-Einstieg",
+                    "interpretation_short": "Aggressiver Einstieg",
+                    "interpretation_long": "Momentum dreht früh wieder nach oben",
+                    "action_hint": "Kleine Long-Position",
+                }
+
+
             
             elif macd["bias"] == "bearish" and rsi["value"] < bias_level:
                 action = "SELL"
@@ -1660,7 +1754,7 @@ class SignalGenerator:
             macd_result = macd_analysis.analyse(fenster)
             adx_result = adx_analysis.analyse(fenster)
             ma_result = ma_analysis.analyse(fenster)
-            market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result)
+            market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result, strategy_rules)
 
             decision = self.engine.decide(
                 market_result, rsi_result, macd_result, adx_result
