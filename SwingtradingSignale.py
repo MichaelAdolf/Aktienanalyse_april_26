@@ -1554,9 +1554,10 @@ class TradeRiskManager:
         }
     
 class SignalGenerator:
-
-    def __init__(self, thresholds):
+    
+    def __init__(self, thresholds, strategy: str):
         self.thresholds = thresholds
+        self.strategy = strategy
         self.engine = TradeDecisionEngine()
 
     def generate_signals(
