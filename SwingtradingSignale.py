@@ -1041,6 +1041,9 @@ class MarketRegimeAnalysis:
     ) -> dict:
 
         # Default-Werte
+        if strategy_rules is None:
+            strategy_rules = {"allow_emerging_trend": False}
+
         market_regime = "unknown"
         trade_bias = "none"
         confidence = 0.0
@@ -1117,17 +1120,6 @@ class MarketRegimeAnalysis:
                 interpretation_short += " | MA-Crossover gegen Trend!"
                 interpretation_long += " MA10 hat MA50 nach oben gekreuzt – Vorsicht bei Short-Einstiegen."
                 
-        # -----------------------------
-        # ENTSTEHENDER TREND
-        # -----------------------------
-        elif adx["regime"] == "emerging_trend":
-            # Strategieabhängig: Emerging Trend zulassen oder blockieren
-            if strategy_rules.get("allow_emerging_trend", False):
-                market_regime = "trend_market"
-            else:
-                market_regime = "transition_phase"
-
-
         # -----------------------------
         # EXTREMER TREND / ERSCHÖPFUNG
         # -----------------------------
@@ -1298,22 +1290,20 @@ class TradeDecisionEngine:
     ) -> dict:
     
         # -----------------------------
-        # Initialisieren
+        # Initialisieren (immer!)
         # -----------------------------
         strategy = market.get("strategy", "Conservative")
-            
-        TRADER_MATRIX = {
+    
+        TRADER_MATRIX_LOCAL = {
             "Conservative": ["confirmed_trend"],
             "Balanced": ["confirmed_trend", "trend_pullback"],
             "Aggressive": ["confirmed_trend", "trend_pullback", "early_momentum"],
         }
+        allowed_situations = TRADER_MATRIX_LOCAL.get(strategy, ["confirmed_trend"])
     
-        allowed_situations = TRADER_MATRIX.get(strategy, ["confirmed_trend"])
-
         situation = "none"
     
-        
-        # Defaults → garantieren stabilen Rückgabewert
+        # Defaults -> garantiert stabilen Rückgabewert
         action = "HOLD"
         position_type = "none"
         confidence = 0.0
@@ -1325,63 +1315,63 @@ class TradeDecisionEngine:
         action_hint = "Abwarten"
     
         bias_level = rsi.get("trend_bias", 50)
-            
-        
-    # -----------------------------
-    # Situation Classification
-    # -----------------------------
-    if market["market_regime"] == "trend_market":
-
-        if macd["bias"] == "bullish" and rsi["value"] > bias_level:
-            situation = "confirmed_trend"
-            confidence = market.get("confidence", 0.6)
-            risk_level = "low"
-            summary = "Bestätigter Trend"
-            reason = "Trend + Momentum bestätigt"
-
-        elif macd["bias"] == "bullish" and rsi["value"] > bias_level - 8:
-            situation = "trend_pullback"
-            confidence = market.get("confidence", 0.6) * 0.8
-            risk_level = "moderate"
-            summary = "Trend-Pullback"
-            reason = "Pullback im intakten Trend"
-
-    elif market["market_regime"] in ("transition_phase",):
-
-        if macd.get("histogram_trend", 0) > 0:
-            situation = "early_momentum"
-            confidence = 0.4
-            risk_level = "high"
-            summary = "Frühes Momentum"
-            reason = "Momentum beginnt zu drehen"
-
-    # -----------------------------
-    # Decision Policy (einziger Entscheidungsort)
-    # -----------------------------
-    if situation in allowed_situations:
-        action = "BUY"
-        position_type = situation
-        action_hint = "Long-Position gemäß Strategie eröffnen"
-    else:
-        action = "HOLD"
-        position_type = "none"
-
-    # -----------------------------
-    # EIN finaler, garantierter Return
-    # -----------------------------
-    return {
-        "action": action,
-        "position_type": position_type,
-        "confidence": round(confidence, 2),
-        "risk_level": risk_level,
-        "reason": reason,
-        "summary": summary,
-        "interpretation_short": interpretation_short,
-        "interpretation_long": interpretation_long,
-        "action_hint": action_hint,
-    }
-
     
+        # -----------------------------
+        # Situation Classification (neutral)
+        # -----------------------------
+        if market.get("market_regime") == "trend_market":
+    
+            if macd.get("bias") == "bullish" and (rsi.get("value") is not None) and rsi["value"] > bias_level:
+                situation = "confirmed_trend"
+                confidence = market.get("confidence", 0.6)
+                risk_level = "low"
+                summary = "Bestätigter Trend"
+                reason = "Trend + Momentum bestätigt"
+    
+            elif macd.get("bias") == "bullish" and (rsi.get("value") is not None) and rsi["value"] > bias_level - 8:
+                situation = "trend_pullback"
+                confidence = market.get("confidence", 0.6) * 0.8
+                risk_level = "moderate"
+                summary = "Trend-Pullback"
+                reason = "Pullback im intakten Trend"
+    
+        elif market.get("market_regime") == "transition_phase":
+    
+            # frühes Momentum nur für Aggressive
+            if macd.get("histogram_trend", 0) > 0:
+                situation = "early_momentum"
+                confidence = 0.4
+                risk_level = "high"
+                summary = "Frühes Momentum"
+                reason = "Momentum beginnt zu drehen"
+    
+        # -----------------------------
+        # Decision Policy (einziger Entscheidungsort)
+        # -----------------------------
+        if situation in allowed_situations:
+            action = "BUY"
+            position_type = situation
+            action_hint = f"Long-Position gemäß Strategie '{strategy}' eröffnen"
+        else:
+            action = "HOLD"
+            position_type = "none"
+    
+        # -----------------------------
+        # EIN finaler, garantierter Return
+        # -----------------------------
+        return {
+            "action": action,
+            "position_type": position_type,
+            "confidence": round(float(confidence), 2),
+            "risk_level": risk_level,
+            "reason": reason,
+            "summary": summary,
+            "interpretation_short": interpretation_short,
+            "interpretation_long": interpretation_long,
+            "action_hint": action_hint,
+        }
+
+
 class TradePlanBuilder:
 
     def build(self, decision: dict, entry: dict) -> dict:
@@ -1634,24 +1624,26 @@ class SignalGenerator:
             macd_result = macd_analysis.analyse(fenster)
             adx_result = adx_analysis.analyse(fenster)
             ma_result = ma_analysis.analyse(fenster)
-    
+            strategy_rules = STRATEGY_RULES.get(self.strategy, STRATEGY_RULES["Conservative"])
             market_result = market_analysis.analyse(
-                rsi_result, macd_result, adx_result, ma_result
+                rsi_result, macd_result, adx_result, ma_result, strategy_rules
             )
+            market_result["strategy"] = self.strategy
     
             decision = self.engine.decide(
                 market_result, rsi_result, macd_result, adx_result
             )
     
             action = decision.get("action", "HOLD")
-    
+            
             signale.append({
+                "Datum": full_data.index[i],
                 "Entscheidung": action_map.get(action, "🟡 Halten"),
                 "Positionstyp": decision.get("position_type", "none"),
                 "Confidence": decision.get("confidence", 0.0),
                 "RiskLevel": decision.get("risk_level", "unknown"),
             })
-    
+
         return pd.DataFrame(signale)
 
 
@@ -1708,10 +1700,10 @@ class BuySignalEvaluator:
 class SwingSignalService:
 
     
-    def __init__(self, thresholds):
-            self.generator = SignalGenerator(thresholds)
-            self.evaluator = BuySignalEvaluator()
-
+    def __init__(elf, thresholds, strategy: str):
+        self.strategy = strategy
+        self.generator = SignalGenerator(thresholds, strategy)
+        self.evaluator = BuySignalEvaluator()
 
     def run_analysis(
         self,
