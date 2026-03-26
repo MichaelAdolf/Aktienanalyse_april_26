@@ -21,7 +21,8 @@ from SwingtradingSignale import(
     EntryQualityAnalysis,
     TradeDecisionEngine,
     PositionSizer,
-    SwingSignalService
+    SwingSignalService,
+    SRATEGY_RULES
 )
 
 from views import(
@@ -258,7 +259,7 @@ def aktienseite():
     atr_analysis = ATRQualityAnalysis()
     entryquality_analysis = EntryQualityAnalysis()
     trade_decision = TradeDecisionEngine()
-    swingsignal_analysis = SwingSignalService(thresholds)
+    swingsignal_analysis = SwingSignalService(thresholds, strategie)
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
 
@@ -298,7 +299,10 @@ def aktienseite():
         ma50 = data["MA50"].iloc[-1],
         ma10 = data["MA10"].iloc[-1]
     )
-    market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result)
+
+    strategy_rules = STRATEGY_RULES.get(strategie, STRATEGY_RULES["Conservative"])
+    market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result, strategy_rules)
+    market_result["strategy"] = strategie
     rsi_result["trend_bias"] = thresholds["RSI"]["trend_bias"]
     entryquality_result = entryquality_analysis.analyse(bollinger_result, stochastic_result, market_result, ma_result, atr_result)
     tradedecision_result = trade_decision.decide(market_result, rsi_result, macd_result, adx_result)
