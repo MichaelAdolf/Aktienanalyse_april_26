@@ -22,7 +22,7 @@ from SwingtradingSignale import(
     TradeDecisionEngine,
     PositionSizer,
     SwingSignalService,
-    SRATEGY_RULES
+    STRATEGY_RULES
 )
 
 from views import(
