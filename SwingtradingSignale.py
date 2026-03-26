@@ -1080,23 +1080,6 @@ class MarketRegimeAnalysis:
                 action_hint = "Short-Reversal möglich, Risiko beachten"
 
         # -----------------------------
-        # EMERGING TREND
-        # -----------------------------
-        elif adx["regime"] == "emerging_trend":
-            market_regime = "transition_phase"
-            trade_bias = "wait_for_confirmation"
-            confidence = 0.5
-
-            summary = "Trend im Aufbau"
-            interpretation_short = "Trend entsteht, noch unsicher"
-            interpretation_long = (
-                "Der ADX signalisiert den Beginn eines neuen Trends. "
-                "Eine Bestätigung ist jedoch noch ausstehend, daher sollten "
-                "Positionen vorsichtig aufgebaut oder zunächst abgewartet werden."
-            )
-            action_hint = "Kleine Positionen oder abwarten"
-
-        # -----------------------------
         # STRONG TREND
         # -----------------------------
         
@@ -1282,24 +1265,22 @@ class TradeDecisionEngine:
     """
     
     def decide(
-        self,
-        market: dict,
-        rsi: dict,
-        macd: dict,
-        adx: dict
+    self,
+    market: dict,
+    rsi: dict,
+    macd: dict,
+    adx: dict
     ) -> dict:
-    
         # -----------------------------
         # Initialisieren (immer!)
         # -----------------------------
         strategy = market.get("strategy", "Conservative")
     
-        TRADER_MATRIX_LOCAL = {
+        allowed_situations = {
             "Conservative": ["confirmed_trend"],
             "Balanced": ["confirmed_trend", "trend_pullback"],
             "Aggressive": ["confirmed_trend", "trend_pullback", "early_momentum"],
-        }
-        allowed_situations = TRADER_MATRIX_LOCAL.get(strategy, ["confirmed_trend"])
+        }.get(strategy, ["confirmed_trend"])
     
         situation = "none"
     
@@ -1317,18 +1298,17 @@ class TradeDecisionEngine:
         bias_level = rsi.get("trend_bias", 50)
     
         # -----------------------------
-        # Situation Classification (neutral)
+        # Situation Classification
         # -----------------------------
         if market.get("market_regime") == "trend_market":
-    
-            if macd.get("bias") == "bullish" and (rsi.get("value") is not None) and rsi["value"] > bias_level:
+            if macd.get("bias") == "bullish" and rsi.get("value") is not None and rsi["value"] > bias_level:
                 situation = "confirmed_trend"
                 confidence = market.get("confidence", 0.6)
                 risk_level = "low"
                 summary = "Bestätigter Trend"
                 reason = "Trend + Momentum bestätigt"
     
-            elif macd.get("bias") == "bullish" and (rsi.get("value") is not None) and rsi["value"] > bias_level - 8:
+            elif macd.get("bias") == "bullish" and rsi.get("value") is not None and rsi["value"] > bias_level - 8:
                 situation = "trend_pullback"
                 confidence = market.get("confidence", 0.6) * 0.8
                 risk_level = "moderate"
@@ -1336,8 +1316,6 @@ class TradeDecisionEngine:
                 reason = "Pullback im intakten Trend"
     
         elif market.get("market_regime") == "transition_phase":
-    
-            # frühes Momentum nur für Aggressive
             if macd.get("histogram_trend", 0) > 0:
                 situation = "early_momentum"
                 confidence = 0.4
@@ -1357,7 +1335,7 @@ class TradeDecisionEngine:
             position_type = "none"
     
         # -----------------------------
-        # EIN finaler, garantierter Return
+        # Finaler Return (immer!)
         # -----------------------------
         return {
             "action": action,
