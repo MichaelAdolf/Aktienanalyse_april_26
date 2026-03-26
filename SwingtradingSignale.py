@@ -1322,32 +1322,31 @@ class TradeDecisionEngine:
         action_hint = ""
     
         bias_level = rsi.get("trend_bias", 50)
-    
+            
+        # --------------------------------------------------
+        # 1️⃣ RANGE-MARKT → Mean Reversion (Situation erkennen)
+        # --------------------------------------------------
+        if market["market_regime"] == "range_market":
         
-            # --------------------------------------------------
-            # 1️⃣ RANGE-MARKT → Mean Reversion (Situation erkennen)
-            # --------------------------------------------------
-            if market["market_regime"] == "range_market":
+            summary = "Seitwärtsmarkt mit Mean Reversion Chancen"
         
-                summary = "Seitwärtsmarkt mit Mean Reversion Chancen"
+            if rsi["state"] == "oversold":
+                situation = "mean_reversion_long"
+                confidence = 0.55
+                risk_level = "moderate"
+                reason = "Range + RSI überverkauft"
+                interpretation_short = "Überverkauft im Seitwärtsmarkt"
+                interpretation_long = "Mean-Reversion-Chance im Range-Markt."
+                action_hint = "Antizyklische Long-Chance"
         
-                if rsi["state"] == "oversold":
-                    situation = "mean_reversion_long"
-                    confidence = 0.55
-                    risk_level = "moderate"
-                    reason = "Range + RSI überverkauft"
-                    interpretation_short = "Überverkauft im Seitwärtsmarkt"
-                    interpretation_long = "Mean-Reversion-Chance im Range-Markt."
-                    action_hint = "Antizyklische Long-Chance"
-        
-                elif rsi["state"] == "overbought":
-                    situation = "mean_reversion_short"
-                    confidence = 0.55
-                    risk_level = "moderate"
-                    reason = "Range + RSI überkauft"
-                    interpretation_short = "Überkauft im Seitwärtsmarkt"
-                    interpretation_long = "Antizyklische Short-Chance im Range-Markt."
-                    action_hint = "Antizyklische Short-Chance"
+            elif rsi["state"] == "overbought":
+                situation = "mean_reversion_short"
+                confidence = 0.55
+                risk_level = "moderate"
+                reason = "Range + RSI überkauft"
+                interpretation_short = "Überkauft im Seitwärtsmarkt"
+                interpretation_long = "Antizyklische Short-Chance im Range-Markt."
+                action_hint = "Antizyklische Short-Chance"
         
             # --------------------------------------------------
             # 2️⃣ TRANSITION → frühes Momentum erkennen
