@@ -1676,9 +1676,8 @@ class BuySignalEvaluator:
         return pd.DataFrame(bewertungen)
 
 class SwingSignalService:
-
     
-    def __init__(elf, thresholds, strategy: str):
+    def __init__(self, thresholds, strategy: str):
         self.strategy = strategy
         self.generator = SignalGenerator(thresholds, strategy)
         self.evaluator = BuySignalEvaluator()
