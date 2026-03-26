@@ -222,7 +222,7 @@ class MACDAnalysis:
         macd = float(data["MACD"].iloc[-1])
         signal = float(data["MACD_Signal"].iloc[-1])
         hist = float(data["MACD_Hist"].iloc[-1])
-
+        
         prev_hist = float(data["MACD_Hist"].iloc[-2])
         prev_macd = float(data["MACD"].iloc[-2])
 
@@ -335,6 +335,7 @@ class MACDAnalysis:
             "macd": round(macd, 4),
             "signal": round(signal, 4),
             "histogram": round(hist, 4),
+            "histogram_trend": round(hist_trend, 4),
             "regime": regime,
             "state": state,
             "bias": bias,
