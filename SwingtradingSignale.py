@@ -1078,11 +1078,40 @@ class MarketRegimeAnalysis:
                     "was auf Short-Reversal Chancen hinweist."
                 )
                 action_hint = "Short-Reversal möglich, Risiko beachten"
+        
+        # -----------------------------
+        # EMERGING TREND (profilabhängig)
+        # -----------------------------
+        elif adx["regime"] == "emerging_trend":
+            # Strategy kann emerging trend schon als Trend handeln oder noch warten
+            if strategy_rules.get("allow_emerging_trend", False):
+                market_regime = "trend_market"
+                trade_bias = macd["bias"]
+                confidence = 0.55
+                summary = "Trend im Aufbau (handelbar)"
+                interpretation_short = "Trend entsteht – frühe Einstiege möglich"
+                interpretation_long = (
+                    "Der ADX signalisiert einen entstehenden Trend. "
+                    "Diese Phase wird für die gewählte Strategie als handelbar betrachtet, "
+                    "ist jedoch weniger sicher als ein etablierter Trend."
+                )
+                action_hint = "Kleine Position / Pullback bevorzugen"
+            else:
+                market_regime = "transition_phase"
+                trade_bias = "wait_for_confirmation"
+                confidence = 0.45
+                summary = "Trend im Aufbau (noch abwarten)"
+                interpretation_short = "Trend entsteht – Bestätigung fehlt"
+                interpretation_long = (
+                    "Der ADX signalisiert einen entstehenden Trend, "
+                    "aber die Strategie wartet auf Bestätigung (stärkerer Trend)."
+                )
+                action_hint = "Abwarten / beobachten"
 
+        
         # -----------------------------
         # STRONG TREND
         # -----------------------------
-        
         elif adx["regime"] == "strong_trend":
             market_regime = "trend_market"
             trade_bias = macd["bias"]
