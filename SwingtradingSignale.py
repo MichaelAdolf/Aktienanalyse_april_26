@@ -1676,6 +1676,9 @@ class SignalGenerator:
             decision = self.engine.decide(
                 market_result, rsi_result, macd_result, adx_result
             )
+            
+            action = decision.get("action", "HOLD")
+
 
             action_map = {
                 "BUY": "🟢 Kaufen",
@@ -1686,16 +1689,12 @@ class SignalGenerator:
                 "REDUCE": "🟡 Halten",
             }
 
-            signale.append({
-                "Datum": datum,
-                "Entscheidung": action_map.get(decision["action"], "🟡 Halten"),
-                "confidence": decision["confidence"],
-                "market_regime": market_result.get("market_regime"),
-                "rsi_state": rsi_result.get("state"),
-                "rsi_value": rsi_result.get("value"),
-                "macd_bias": macd_result.get("bias"),
-                "adx_value": adx_result.get("adx"),
-
+            
+            signals.append({
+                "Entscheidung": action_map.get(action, "🟡 Halten"),
+                "Positionstyp": decision.get("position_type", "none"),
+                "Confidence": decision.get("confidence", 0.0),
+                "RiskLevel": decision.get("risk_level", "unknown"),
             })
 
         return pd.DataFrame(signale)
