@@ -1288,7 +1288,7 @@ class TradeDecisionEngine:
     Trifft eine konkrete Kauf-/Nicht-Kauf-Entscheidung
     basierend auf Market-Regime, RSI, MACD und ADX
     """
-
+    
     def decide(
         self,
         market: dict,
@@ -1296,11 +1296,12 @@ class TradeDecisionEngine:
         macd: dict,
         adx: dict
     ) -> dict:
-
+    
         # -----------------------------
         # Initialisieren
         # -----------------------------
         strategy = market.get("strategy", "Conservative")
+    
         allowed_situations = {
             "Conservative": ["confirmed_trend"],
             "Balanced": ["confirmed_trend", "trend_pullback"],
@@ -1322,108 +1323,109 @@ class TradeDecisionEngine:
     
         bias_level = rsi.get("trend_bias", 50)
     
-        # --------------------------------------------------
-        # 1️⃣ RANGE-MARKT → Mean Reversion (Situation erkennen)
-        # --------------------------------------------------
-        if market["market_regime"] == "range_market":
-    
-            summary = "Seitwärtsmarkt mit Mean Reversion Chancen"
-    
-            if rsi["state"] == "oversold":
-                situation = "mean_reversion_long"
-                confidence = 0.55
+        
+            # --------------------------------------------------
+            # 1️⃣ RANGE-MARKT → Mean Reversion (Situation erkennen)
+            # --------------------------------------------------
+            if market["market_regime"] == "range_market":
+        
+                summary = "Seitwärtsmarkt mit Mean Reversion Chancen"
+        
+                if rsi["state"] == "oversold":
+                    situation = "mean_reversion_long"
+                    confidence = 0.55
+                    risk_level = "moderate"
+                    reason = "Range + RSI überverkauft"
+                    interpretation_short = "Überverkauft im Seitwärtsmarkt"
+                    interpretation_long = "Mean-Reversion-Chance im Range-Markt."
+                    action_hint = "Antizyklische Long-Chance"
+        
+                elif rsi["state"] == "overbought":
+                    situation = "mean_reversion_short"
+                    confidence = 0.55
+                    risk_level = "moderate"
+                    reason = "Range + RSI überkauft"
+                    interpretation_short = "Überkauft im Seitwärtsmarkt"
+                    interpretation_long = "Antizyklische Short-Chance im Range-Markt."
+                    action_hint = "Antizyklische Short-Chance"
+        
+            # --------------------------------------------------
+            # 2️⃣ TRANSITION → frühes Momentum erkennen
+            # --------------------------------------------------
+            elif market["market_regime"] == "transition_phase":
+        
+                summary = "Trend im Aufbau"
+                confidence = 0.4
+                risk_level = "high"
+        
+                if macd.get("histogram_trend", 0) > 0:
+                    situation = "early_momentum"
+                    reason = "Momentum beginnt zu drehen"
+                    interpretation_short = "Frühes Momentum"
+                    interpretation_long = "Momentum dreht nach oben, Trend aber noch nicht bestätigt."
+                    action_hint = "Früher Einstieg mit hoher Vorsicht"
+        
+            # --------------------------------------------------
+            # 3️⃣ TREND-MARKT → Trend-Situationen erkennen
+            # --------------------------------------------------
+            elif market["market_regime"] == "trend_market":
+        
+                summary = "Trendmarkt"
+        
+                # ✅ Bestätigter Trend
+                if macd["bias"] == "bullish" and rsi["value"] > bias_level:
+                    situation = "confirmed_trend"
+                    confidence = market["confidence"]
+                    risk_level = "low"
+                    reason = "Bestätigter Aufwärtstrend"
+                    interpretation_short = "Starker Trend"
+                    interpretation_long = "Momentum und RSI bestätigen den Trend."
+                    action_hint = "Trendfolge"
+        
+                # ✅ Trend-Pullback
+                elif macd["bias"] == "bullish" and rsi["value"] > bias_level - 8:
+                    situation = "trend_pullback"
+                    confidence = market["confidence"] * 0.8
+                    risk_level = "moderate"
+                    reason = "Pullback im Trend"
+                    interpretation_short = "Trend-Pullback"
+                    interpretation_long = "Pullback innerhalb eines intakten Trends."
+                    action_hint = "Einstieg im Pullback"
+        
+            # --------------------------------------------------
+            # 4️⃣ LATE TREND → kein Einstieg
+            # --------------------------------------------------
+            elif market["market_regime"] == "late_trend":
+        
+                summary = "Späte Trendphase"
+                confidence = 0.6
                 risk_level = "moderate"
-                reason = "Range + RSI überverkauft"
-                interpretation_short = "Überverkauft im Seitwärtsmarkt"
-                interpretation_long = "Mean-Reversion-Chance im Range-Markt."
-                action_hint = "Antizyklische Long-Chance"
-    
-            elif rsi["state"] == "overbought":
-                situation = "mean_reversion_short"
-                confidence = 0.55
-                risk_level = "moderate"
-                reason = "Range + RSI überkauft"
-                interpretation_short = "Überkauft im Seitwärtsmarkt"
-                interpretation_long = "Antizyklische Short-Chance im Range-Markt."
-                action_hint = "Antizyklische Short-Chance"
-    
-        # --------------------------------------------------
-        # 2️⃣ TRANSITION → frühes Momentum erkennen
-        # --------------------------------------------------
-        elif market["market_regime"] == "transition_phase":
-    
-            summary = "Trend im Aufbau"
-            confidence = 0.4
-            risk_level = "high"
-    
-            if macd.get("histogram_trend", 0) > 0:
-                situation = "early_momentum"
-                reason = "Momentum beginnt zu drehen"
-                interpretation_short = "Frühes Momentum"
-                interpretation_long = "Momentum dreht nach oben, Trend aber noch nicht bestätigt."
-                action_hint = "Früher Einstieg mit hoher Vorsicht"
-    
-        # --------------------------------------------------
-        # 3️⃣ TREND-MARKT → Trend-Situationen erkennen
-        # --------------------------------------------------
-        elif market["market_regime"] == "trend_market":
-    
-            summary = "Trendmarkt"
-    
-            # ✅ Bestätigter Trend
-            if macd["bias"] == "bullish" and rsi["value"] > bias_level:
-                situation = "confirmed_trend"
-                confidence = market["confidence"]
-                risk_level = "low"
-                reason = "Bestätigter Aufwärtstrend"
-                interpretation_short = "Starker Trend"
-                interpretation_long = "Momentum und RSI bestätigen den Trend."
-                action_hint = "Trendfolge"
-    
-            # ✅ Trend-Pullback
-            elif macd["bias"] == "bullish" and rsi["value"] > bias_level - 8:
-                situation = "trend_pullback"
-                confidence = market["confidence"] * 0.8
-                risk_level = "moderate"
-                reason = "Pullback im Trend"
-                interpretation_short = "Trend-Pullback"
-                interpretation_long = "Pullback innerhalb eines intakten Trends."
-                action_hint = "Einstieg im Pullback"
-    
-        # --------------------------------------------------
-        # 4️⃣ LATE TREND → kein Einstieg
-        # --------------------------------------------------
-        elif market["market_regime"] == "late_trend":
-    
-            summary = "Späte Trendphase"
-            confidence = 0.6
-            risk_level = "moderate"
-            reason = "Späte Trendphase"
-            interpretation_short = "Trend erschöpft"
-            interpretation_long = "Kein günstiger Neueinstieg in dieser Phase."
-            action_hint = "Positionen reduzieren"
-    
-        # --------------------------------------------------
-        # ✅ TRADER-MATRIX: finale Entscheidung
-        # --------------------------------------------------
-        if situation in allowed_situations:
-            action = "BUY"
-            position_type = situation
-        else:
-            action = "HOLD"
-            position_type = "none"
-    
-        return {
-            "action": action,
-            "position_type": position_type,
-            "confidence": round(confidence, 2),
-            "risk_level": risk_level,
-            "reason": reason,
-            "summary": summary,
-            "interpretation_short": interpretation_short,
-            "interpretation_long": interpretation_long,
-            "action_hint": action_hint
-        }
+                reason = "Späte Trendphase"
+                interpretation_short = "Trend erschöpft"
+                interpretation_long = "Kein günstiger Neueinstieg in dieser Phase."
+                action_hint = "Positionen reduzieren"
+        
+            # --------------------------------------------------
+            # ✅ TRADER-MATRIX: finale Entscheidung
+            # --------------------------------------------------
+            if situation in allowed_situations:
+                action = "BUY"
+                position_type = situation
+            else:
+                action = "HOLD"
+                position_type = "none"
+        
+            return {
+                "action": action,
+                "position_type": position_type,
+                "confidence": round(confidence, 2),
+                "risk_level": risk_level,
+                "reason": reason,
+                "summary": summary,
+                "interpretation_short": interpretation_short,
+                "interpretation_long": interpretation_long,
+                "action_hint": action_hint
+            }
     
 class TradePlanBuilder:
 
@@ -1670,7 +1672,7 @@ class SignalGenerator:
             macd_result = macd_analysis.analyse(fenster)
             adx_result = adx_analysis.analyse(fenster)
             ma_result = ma_analysis.analyse(fenster)
-            market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result, strategy_rules)
+            market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result)
 
             decision = self.engine.decide(
                 market_result, rsi_result, macd_result, adx_result
