@@ -43,14 +43,11 @@ TRADER_MATRIX = {
 
 def macd_allows_entry(macd, mode):
     if mode == "strict":
-        return macd["bias"] == "bullish"
-
+        return macd.get("regime") == "bullish"
     if mode == "normal":
-        return macd["histogram"] > 0
-
+        return macd.get("histogram", 0) > 0
     if mode == "loose":
-        return macd["histogram"] > -0.02 and macd["histogram_trend"] > 0
-
+        return macd.get("histogram", 0) > -0.02 and macd.get("histogram_trend", 0) > 0
     return False
 
 
@@ -1331,14 +1328,14 @@ class TradeDecisionEngine:
         # Situation Classification
         # -----------------------------
         if market.get("market_regime") == "trend_market":
-            if macd.get("bias") == "bullish" and rsi.get("value") is not None and rsi["value"] > bias_level:
+            if macd.get("regime") == "bullish" and rsi.get("value") is not None and rsi["value"] > bias_level:
                 situation = "confirmed_trend"
                 confidence = market.get("confidence", 0.6)
                 risk_level = "low"
                 summary = "Bestätigter Trend"
                 reason = "Trend + Momentum bestätigt"
     
-            elif macd.get("bias") == "bullish" and rsi.get("value") is not None and rsi["value"] > bias_level - 8:
+            elif macd.get("regime") == "bullish" and rsi.get("value") is not None and rsi["value"] > bias_level - 8:
                 situation = "trend_pullback"
                 confidence = market.get("confidence", 0.6) * 0.8
                 risk_level = "moderate"
