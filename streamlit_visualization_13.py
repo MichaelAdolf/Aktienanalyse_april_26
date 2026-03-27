@@ -9,6 +9,11 @@ from signals_generation import (
     PeriodAnalysis
 )
 
+from trading_v2.rule_engine import RuleEngineV2
+from trading_v2.features import build_features
+from trading_v2.telemetry import write_daily_log
+from trading_v2.wfo_optimizer import optimize_symbol_wfo, write_learned, write_report
+
 from SwingtradingSignale import(
     RSIAnalysis,
     MACDAnalysis,
@@ -54,9 +59,6 @@ from config_thresholds import (
     apply_profile
 )
 
-def go_to(page_name):
-    st.session_state.page = page_name
-
 from learning_optimizer import (
     optimize_symbol
 )
@@ -64,6 +66,13 @@ from learning_optimizer import (
 from SwingtradingSignale import RSIAnalysis, MACDAnalysis, ADXAnalysis, MAAnalysis, MarketRegimeAnalysis, TradeDecisionEngine
 from core_magic_3 import lade_daten_aktie, berechne_indikatoren
 from config_thresholds import get_thresholds, apply_profile
+
+def go_to(page_name):
+    st.session_state.page = page_name
+
+@st.cache_resource
+def get_rule_engine():
+    return RuleEngineV2()
 
 def home_page():
     watchlist = lade_aktien()
@@ -138,50 +147,42 @@ def home_page():
     
         with col_signal:
             try:
-                # --- Daten (kleiner Zeitraum genügt) ---
+                engine = get_rule_engine()
+            
+                # --- Daten laden + Indikatoren (wie bisher) ---
                 data = lade_daten_aktie(symbol, period="6mo")
                 data = berechne_indikatoren(data)
-    
-                # --- thresholds & aktuelles Profil laden ---
-                # Profil kommt aus Sidebar (aktienseite), aber hier nehmen wir Conservative als Basismodus
-                thresholds = get_thresholds(symbol, None)
-                thresholds = apply_profile(thresholds, "Conservative")  # willst du, kann ich ersetzen durch aktuelles Profil
-    
-                # --- Analyzer ---
-                rsi = RSIAnalysis(
-                    oversold=thresholds["RSI"]["oversold"],
-                    overbought=thresholds["RSI"]["overbought"],
-                    bullish_floor=thresholds["RSI"]["bullish_floor"],
-                    bearish_ceiling=thresholds["RSI"]["bearish_ceiling"],
-                ).analyse(data)
-    
-                macd = MACDAnalysis().analyse(data)
-                adx = ADXAnalysis(
-                    weak_trend=thresholds["ADX"]["weak_trend"],
-                    strong_trend=thresholds["ADX"]["strong_trend"],
-                    extreme_trend=thresholds["ADX"]["extreme_trend"],
-                ).analyse(data)
-    
-                ma = MAAnalysis().analyse(data)
-    
-                # --- Market Regime ---
-                market = MarketRegimeAnalysis().analyse(rsi, macd, adx, ma)
-    
-                # --- trend_bias setzen ---
-                rsi["trend_bias"] = thresholds["RSI"]["trend_bias"]
-    
-                # --- Entscheidung ---
-                decision = TradeDecisionEngine().decide(market, rsi, macd, adx)
-                status = decision["action"]
-    
-                # Ampel
+            
+                # --- neue Entscheidung (State Machine) ---
+                decision = engine.evaluate(symbol, data)   # BUY/SELL/HOLD
+                status = decision.signal
+            
+                # --- Telemetrie (optional, aber stark empfohlen) ---
+                today = str(data.index[-1].date())
+                feat = build_features(data, adx_thr=engine.global_cfg.get("risk", {}).get("adx_thr", 30))
+            
+                write_daily_log(
+                    today,
+                    symbol,
+                    {
+                        "mode": engine.policy.mode,
+                        "state": decision.state,
+                        "signal": status,
+                        "features": {k: feat[k] for k in ["rsi", "bb_pos", "macd_hist", "adx", "close"] if k in feat},
+                        "params": engine.learned.get(symbol, {}),
+                        "meta": decision.meta,
+                        "reasons": decision.reasons,
+                    },
+                )
+            
+                # --- Ampel ---
                 if status == "BUY":
                     st.markdown("<h3 style='text-align:center;'>🟢</h3>", unsafe_allow_html=True)
                 elif status == "SELL":
                     st.markdown("<h3 style='text-align:center;'>🔴</h3>", unsafe_allow_html=True)
                 else:
                     st.markdown("<h3 style='text-align:center;'>🟡</h3>", unsafe_allow_html=True)
-    
+            
             except:
                 st.markdown("<h3 style='text-align:center;'>⚠️</h3>", unsafe_allow_html=True)
 
@@ -202,6 +203,8 @@ def aktienseite():
     try:
         data_full = lade_daten_aktie(symbol, period=max_period)
         data_full = berechne_indikatoren(data_full)
+        engine = get_rule_engine()
+        decision_v2 = engine.evaluate(symbol, data_ful
     except Exception as e:
         st.error(f"Fehler beim Laden der Daten: {e}")
         return
@@ -336,16 +339,22 @@ def aktienseite():
         with st.container(border=True):
                 # ... dein bestehender Inhalt ...
                 # --- Kalibrierungs-Button ---
-                if st.button("🔁 Parameter für dieses Symbol rekalibrieren"):
-                    with st.spinner("Kalibriere Parameter (kleiner Grid-Search)…"):
+                if st.button("🔁 Parameter für dieses Symbol rekalibrieren (WFO V2)"):
+                    with st.spinner("WFO: Grid + Triple-Barrier Labels…"):
                         try:
-                            result = optimize_symbol(symbol, period="4y")
-                            st.success(f"Kalibrierung fertig: Score={result['best_score']:.3f}")
-                            st.json(result["delta"])
-                            # Wichtig: Cache leeren, damit neue learned-Werte greifen
+                            report = optimize_symbol_wfo(symbol, data_full)
+                            params = report.get("best_params", {}) or {}
+                
+                            write_learned(symbol, params)
+                            rep_path = write_report(report)
+                
+                            st.success(f"WFO fertig. Best OOS hit rate: {report.get('best_oos_hit_rate', 0):.3f}")
+                            st.json(params)
+                            st.info(f"Report gespeichert: {rep_path}")
+                
                             st.cache_data.clear()
                         except Exception as e:
-                            st.error(f"Kalibrierung fehlgeschlagen: {e}")
+                            st.error(f"WFO fehlgeschlagen: {e}")
 
         with st.container(border=True):
             main_analyzer.plot_hautpchart(name, 1)
@@ -526,6 +535,15 @@ def aktienseite():
     
     
     with tab_handel:
+        st.markdown("## 🧠 Decision (RuleEngineV2 – State Machine)")
+        st.write(f"**Signal:** {decision_v2.signal}")
+        st.write(f"**State:** {decision_v2.state}")
+        st.write(f"**Confidence:** {decision_v2.confidence:.2f}")
+        st.write("**Reasons:** " + ", ".join(decision_v2.reasons))
+        if decision_v2.meta:
+            st.write("**Meta:**")
+            st.json(decision_v2.meta)
+
         with st.container(border=True):
             st.markdown(f"### Handelsentscheidung – {tradedecision_result['interpretation_short']}")
     
