@@ -2,6 +2,8 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 from io import BytesIO
+import json
+from pathlib import Path
 from signals_generation import (
     FundamentalAnalysis,
     Analystenbewertung,
