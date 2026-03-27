@@ -203,7 +203,7 @@ def aktienseite():
         data_full = lade_daten_aktie(symbol, period=max_period)
         data_full = berechne_indikatoren(data_full)
         engine = get_rule_engine()
-        decision_v2 = engine.evaluate(symbol, data_ful
+        decision_v2 = engine.evaluate(symbol, data_full)
     except Exception as e:
         st.error(f"Fehler beim Laden der Daten: {e}")
         return
