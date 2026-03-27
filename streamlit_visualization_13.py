@@ -420,11 +420,12 @@ def aktienseite():
         # --- 2️⃣ MITTLERE SPALTE ---
         with col2:
             with st.container(border=True):
-                zeige_ruleengine_buy_perioden(
+                zeige_ruleengine_buyperioden_und_trefferquote(
                     data=data,
                     symbol=symbol,
-                    hold_days=60,
-                    min_return=0.08
+                    Auswertung_tage=Auswertung_tage,
+                    min_veraenderung=min_veraenderung,
+                    max_gap_days=5
                 )
             
 
