@@ -396,10 +396,6 @@ def aktienseite():
                 else:
                     st.info("⏸ HOLD – kein Trade")
 
-            # ✅ historische Auswertung
-            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
-
-
         # --- 2️⃣ RECHTE SPALTE ---
         with col3:
             with st.container(border=True):   
@@ -410,6 +406,25 @@ def aktienseite():
                     f"- **Stochastics:** {stochastic_result['summary']}\n"
                     f"- **ADX:** {adx_result['trend_acceleration']}"
                     )
+
+        # --- 2 Spalten Layout ---
+        col1, col2 = st.columns([1,1])
+
+        # --- 1️⃣ LINKE SPALTE ---
+        with col1:
+            # ✅ historische Auswertung
+            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
+
+        # --- 2️⃣ MITTLERE SPALTE ---
+        with col2:
+            with st.container(border=True):
+                zeige_ruleengine_buy_perioden(
+                    data=data,
+                    symbol=symbol,
+                    hold_days=60,
+                    min_return=0.08
+                )
+            
 
     # ---------------------------------------------------------
     # TAB CHARTS
@@ -872,6 +887,64 @@ def zeige_swingtrading_signalauswertung(data, service_result):
 
     with st.expander("📊 Alle Signale"):
         st.dataframe(service_result["signals"])
+
+def zeige_ruleengine_buy_perioden(
+    data: pd.DataFrame,
+    symbol: str,
+    hold_days: int = 60,
+    min_return: float = 0.08
+):
+    """
+    Zeigt historische BUY-Perioden der RuleEngineV2
+    und berechnet eine einfache Trefferquote.
+    """
+
+    engine = get_rule_engine()
+
+    buy_events = []
+    results = []
+
+    # --- RuleEngine über Historie "abspielen" ---
+    for i in range(50, len(data) - hold_days):
+        hist_slice = data.iloc[: i + 1]
+
+        decision = engine.evaluate(symbol, hist_slice)
+
+        if decision.signal == "BUY":
+            entry_date = hist_slice.index[-1]
+            entry_price = hist_slice["Close"].iloc[-1]
+
+            exit_idx = i + hold_days
+            exit_price = data["Close"].iloc[exit_idx]
+            exit_date = data.index[exit_idx]
+
+            ret = (exit_price - entry_price) / entry_price
+
+            success = ret >= min_return
+
+            results.append({
+                "Start": entry_date,
+                "Ende": exit_date,
+                "Return_%": round(ret * 100, 2),
+                "Treffer": success
+            })
+
+    if not results:
+        st.info("Keine historischen BUY-Signale der RuleEngineV2 gefunden.")
+        return
+
+    df = pd.DataFrame(results)
+
+    # --- Trefferquote ---
+    hitrate = round(df["Treffer"].mean() * 100, 2)
+
+    # --- UI ---
+    st.subheader("📈 RuleEngineV2 – Historische BUY‑Perioden")
+    st.metric("Trefferquote", f"{hitrate} %")
+    st.caption(f"Definition: ≥ {int(min_return*100)} % nach {hold_days} Tagen")
+
+    with st.expander("📘 BUY‑Perioden (Details)"):
+        st.dataframe(df)
         
 # ---------------------------------------------------------
 # Hilfsfunktion
