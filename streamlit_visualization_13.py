@@ -386,14 +386,15 @@ def aktienseite():
 
         # --- 2️⃣ MITTLERE SPALTE ---
         with col2:
-            with st.container(border=True):   
-                st.subheader("🔄 Swingtrading Übersicht:")
-                if tradedecision_result["action"] == "BUY":
-                    st.success(f"Kaufe Aktien") #{pos['position_size']}
+            with st.container(border=True):
+                st.subheader("🔄 Swingtrading Übersicht (RuleEngineV2)")
+        
+                if decision_v2.signal == "BUY":
+                    st.success("✅ BUY – Entry Transition")
+                elif decision_v2.signal == "SELL":
+                    st.error("❌ SELL – Exit Transition")
                 else:
-                    st.error(f"Kein Trade")
-
-                zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
+                    st.info("⏸ HOLD – kein Trade")
 
         # --- 2️⃣ RECHTE SPALTE ---
         with col3:
