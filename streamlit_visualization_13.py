@@ -1,6 +1,7 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+from io import BytesIO
 from signals_generation import (
     FundamentalAnalysis,
     Analystenbewertung,
@@ -636,9 +637,37 @@ def aktienseite():
         with col2:
             # Fundamentaldaten
             technicalmetrics.zeige_fundamentaldaten(fundamentaldaten)
-
-    with tab_rsi:  
-        st.write("Leere Dummy Seite")
+        
+    with tab_rsi:
+        st.subheader("📥 Export: RSI & Indikatoren (letzte 1,5 Jahre)")
+    
+        st.write(
+            "Download einer Excel-Datei mit Daily-Werten für: Close, Bollinger (Upper/Lower/Middle), "
+            "MA10/MA50, RSI, MACD (inkl. Signal & Histogramm), Stochastics (%K/%D) sowie ADX (+DI/-DI)."
+        )
+    
+        # Excel erzeugen (Bytes) + DataFrame Vorschau + fehlende Spalten
+        excel_bytes, df_export, missing_cols = build_indicator_export_excel(data_full, symbol, years=1.5)
+    
+        # Optional: Hinweis auf fehlende Spalten
+        if missing_cols:
+            st.warning(
+                "Hinweis: Einige Spalten fehlen in den Daten und wurden nicht exportiert: "
+                + ", ".join(missing_cols)
+            )
+    
+        # Download-Button
+        file_name = f"{symbol}_Indicators_Last_18M.xlsx"
+        st.download_button(
+            label="⬇️ Excel herunterladen (letzte 1,5 Jahre)",
+            data=excel_bytes,
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    
+        # Optional: kleine Vorschau
+        with st.expander("🔎 Vorschau (erste 20 Zeilen)"):
+            st.dataframe(df_export.head(20))
                 
     with Algorithmus:
         with st.expander("Aktive Parameter (nach Merge)"):
@@ -866,6 +895,63 @@ def zeige_swingtrading_signalauswertung(data, service_result):
 
     with st.expander("📊 Alle Signale"):
         st.dataframe(service_result["signals"])
+        
+# ---------------------------------------------------------
+# Hilfsfunktion
+# ---------------------------------------------------------
+
+def build_indicator_export_excel(data_full: pd.DataFrame, symbol: str, years: float = 1.5) -> tuple[bytes, pd.DataFrame, list]:
+    """
+    Erzeugt eine Excel-Datei (Bytes) mit Daily-Indikatoren für die letzten 'years' Jahre.
+    Rückgabe: (excel_bytes, df_export, missing_cols)
+    """
+    days = int(round(365 * years))  # 1.5 Jahre ≈ 547 Tage
+
+    # Zeitzone robust übernehmen (yfinance index kann tz-aware oder tz-naive sein)
+    tz = getattr(data_full.index, "tz", None)
+    now = pd.Timestamp.now(tz=tz) if tz is not None else pd.Timestamp.now()
+    start = now - pd.Timedelta(days=days)
+
+    # Zeitraum filtern
+    df = data_full.loc[data_full.index >= start].copy()
+
+    # Spalten, die wir exportieren wollen (wie in berechne_indikatoren erzeugt)
+    wanted_cols = [
+        "Close",
+        "BB_Upper", "BB_Lower", "BB_Middle",
+        "MA10", "MA50",
+        "RSI",
+        "MACD", "MACD_Signal", "MACD_Hist",
+        "Stoch_%K", "Stoch_%D",
+        "ADX", "+DI", "-DI",
+    ]
+
+    # Fehlende Spalten erkennen (falls mal Indikatorberechnung nicht durchlief)
+    missing = [c for c in wanted_cols if c not in df.columns]
+
+    # Nur vorhandene Spalten exportieren (robust)
+    export_cols = [c for c in wanted_cols if c in df.columns]
+    df_export = df[export_cols].copy()
+
+    # Datum als erste Spalte
+    df_export = df_export.reset_index()
+    date_col = df_export.columns[0]  # i.d.R. "Date" oder "index"
+    df_export = df_export.rename(columns={date_col: "Datum"})
+
+    # Excel erzeugen
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        sheet = "Indicators_18M"
+        df_export.to_excel(writer, index=False, sheet_name=sheet)
+
+        # Optional: Spaltenbreite grob anpassen
+        ws = writer.sheets[sheet]
+        for col_idx, col_name in enumerate(df_export.columns, start=1):
+            width = max(10, min(35, len(str(col_name)) + 2))
+            ws.column_dimensions[chr(64 + col_idx)].width = width
+
+    output.seek(0)
+    return output.getvalue(), df_export, missing
 
 
 # ---------------------------------------------------------
