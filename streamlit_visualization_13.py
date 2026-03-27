@@ -888,62 +888,274 @@ def zeige_swingtrading_signalauswertung(data, service_result):
     with st.expander("📊 Alle Signale"):
         st.dataframe(service_result["signals"])
 
-def zeige_ruleengine_buy_perioden(
+import json
+from pathlib import Path
+
+def _load_rule_params(symbol: str, default_rsi=35, default_bb_pos=0.20, default_require_hist_rising=False):
+    """
+    Lädt Parameter aus config/learned_params.json (falls vorhanden),
+    sonst Defaults. Format:
+    { "AAPL": {"rsi_thr": 39, "bb_pos_thr": 0.20, "require_hist_rising": true}, ... }
+    """
+    p = Path("config") / "learned_params.json"
+    params = {"rsi_thr": default_rsi, "bb_pos_thr": default_bb_pos, "require_hist_rising": default_require_hist_rising}
+    try:
+        if p.exists():
+            raw = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(raw, dict) and symbol in raw and isinstance(raw[symbol], dict):
+                for k in ["rsi_thr", "bb_pos_thr", "require_hist_rising"]:
+                    if k in raw[symbol]:
+                        params[k] = raw[symbol][k]
+    except Exception:
+        pass
+    return params
+
+
+def _ruleengine_buy_days(data: pd.DataFrame, rsi_thr: float, bb_pos_thr: float, require_hist_rising: bool):
+    """
+    Ermittelt BUY-Tage nach Entry-Regel:
+    RSI <= rsi_thr
+    UND (bb_pos <= bb_pos_thr ODER Close <= BB_Lower)
+    UND MACD_Hist < 0
+    UND optional hist_rising (MACD_Hist(t) > MACD_Hist(t-1))
+    """
+    buy_dates = []
+    if data is None or data.empty:
+        return buy_dates
+
+    needed = ["Close", "BB_Upper", "BB_Lower", "RSI", "MACD_Hist"]
+    for c in needed:
+        if c not in data.columns:
+            return buy_dates
+
+    for i in range(1, len(data)):
+        row = data.iloc[i]
+        prev = data.iloc[i - 1]
+
+        # NaN guard
+        if pd.isna(row["Close"]) or pd.isna(row["BB_Upper"]) or pd.isna(row["BB_Lower"]) or pd.isna(row["RSI"]) or pd.isna(row["MACD_Hist"]):
+            continue
+
+        denom = float(row["BB_Upper"] - row["BB_Lower"])
+        bb_pos = float((row["Close"] - row["BB_Lower"]) / denom) if denom != 0 else 0.5
+
+        cond = (float(row["RSI"]) <= float(rsi_thr)) \
+               and ((bb_pos <= float(bb_pos_thr)) or (float(row["Close"]) <= float(row["BB_Lower"]))) \
+               and (float(row["MACD_Hist"]) < 0.0)
+
+        if require_hist_rising:
+            if pd.isna(prev["MACD_Hist"]):
+                cond = False
+            else:
+                cond = cond and (float(row["MACD_Hist"]) > float(prev["MACD_Hist"]))
+
+        if cond:
+            buy_dates.append(data.index[i])
+
+    return buy_dates
+
+
+def _cluster_periods_from_dates(dates, max_gap_days: int = 5):
+    """
+    Cluster BUY-Dates zu Perioden:
+    solange Abstand <= max_gap_days bleibt, gleiche Periode.
+    Rückgabe: Liste (start, end)
+    """
+    if not dates:
+        return []
+
+    dates = sorted(dates)
+    periods = []
+    start = prev = dates[0]
+
+    for d in dates[1:]:
+        gap = (d - prev).days
+        if gap <= max_gap_days:
+            prev = d
+        else:
+            periods.append((start, prev))
+            start = prev = d
+
+    periods.append((start, prev))
+    return periods
+
+
+def _evaluate_periods(periods, data: pd.DataFrame, Auswertung_tage: int, min_veraenderung: float):
+    """
+    Bewertet jede Periode ab END-Datum:
+    - entry_price = Close am End-Datum
+    - max_close in den nächsten Auswertung_tage
+    - Signal True, wenn (max_close-entry)/entry >= min_veraenderung
+    Offene Perioden (zu nah am Datenende) werden markiert und nicht in Trefferquote gerechnet.
+    """
+    rows = []
+    if data is None or data.empty:
+        return pd.DataFrame(rows)
+
+    for (start, end) in periods:
+        # End-Kurs finden
+        if end not in data.index:
+            continue
+
+        end_idx = data.index.get_loc(end)
+        entry_price = float(data["Close"].iloc[end_idx])
+
+        lookahead_idx = end_idx + int(Auswertung_tage)
+        if lookahead_idx >= len(data):
+            # nicht auswertbar
+            rows.append({
+                "Start": start,
+                "Ende": end,
+                "Signal": None,
+                "Start_Kurs": entry_price,
+                "Max_Kurs": None,
+                "Kurs_Diff": None,
+                "Kommentar": "Periode noch nicht auswertbar (zu nah am Datenende)"
+            })
+            continue
+
+        window = data["Close"].iloc[end_idx:lookahead_idx + 1]
+        max_close = float(window.max())
+        diff = (max_close - entry_price) / entry_price
+        hit = diff >= float(min_veraenderung)
+
+        rows.append({
+            "Start": start,
+            "Ende": end,
+            "Signal": bool(hit),
+            "Start_Kurs": round(entry_price, 4),
+            "Max_Kurs": round(max_close, 4),
+            "Kurs_Diff": round(diff, 4),
+            "Kommentar": f"Max-Anstieg >= {min_veraenderung*100:.1f}%: {hit}"
+        })
+
+    return pd.DataFrame(rows)
+
+
+def zeige_ruleengine_buyperioden_und_trefferquote(
     data: pd.DataFrame,
     symbol: str,
-    hold_days: int = 60,
-    min_return: float = 0.08
+    Auswertung_tage: int,
+    min_veraenderung: float,
+    max_gap_days: int = 5
 ):
     """
-    Zeigt historische BUY-Perioden der RuleEngineV2
-    (stateless Replay) und berechnet eine Trefferquote.
+    UI-Funktion:
+    - erzeugt BUY-Dates nach Entry-Regeln
+    - clustert Perioden (Gap<=5 Tage)
+    - bewertet Perioden ab End-Datum (max Kurs in Auswertung_tage)
+    - zeigt Trefferquote + Tabellen + optional Chart-Markierung (über plot_priodenchart)
     """
+    params = _load_rule_params(symbol)
+    buy_dates = _ruleengine_buy_days(
+        data,
+        rsi_thr=params["rsi_thr"],
+        bb_pos_thr=params["bb_pos_thr"],
+        require_hist_rising=params["require_hist_rising"]
+    )
 
-    results = []
+    st.subheader("🟦 RuleEngine-Entry (BUY) – Perioden & Trefferquote")
 
-    # --- RuleEngineV2 STATELSS über Historie abspielen ---
-    for i in range(50, len(data) - hold_days):
+    st.caption(
+        f"Entry-Regeln: RSI≤{params['rsi_thr']}, bb_pos≤{params['bb_pos_thr']} (oder Close≤BB_Lower), MACD_Hist<0"
+        + (", hist_rising erforderlich" if params["require_hist_rising"] else "")
+        + f" | Perioden-Cluster: Gap≤{max_gap_days} Tage | Bewertung: {Auswertung_tage} Tage / Mindestanstieg {min_veraenderung*100:.1f}%"
+    )
 
-        # ✅ NEUE Engine pro Zeitschritt (wichtig!)
-        engine = RuleEngineV2()
-
-        hist_slice = data.iloc[: i + 1]
-
-        decision = engine.evaluate(symbol, hist_slice)
-
-        if decision.signal == "BUY":
-            entry_date = hist_slice.index[-1]
-            entry_price = hist_slice["Close"].iloc[-1]
-
-            exit_idx = i + hold_days
-            exit_price = data["Close"].iloc[exit_idx]
-            exit_date = data.index[exit_idx]
-
-            ret = (exit_price - entry_price) / entry_price
-
-            success = ret >= min_return
-
-            results.append({
-                "Start": entry_date,
-                "Ende": exit_date,
-                "Return_%": round(ret * 100, 2),
-                "Treffer": success
-            })
-
-    if not results:
-        st.warning("⚠️ Keine BUY-Signale der RuleEngineV2 in der Historie gefunden.")
+    if not buy_dates:
+        st.warning("⚠️ Keine BUY-Tage nach Entry-Regeln im betrachteten Zeitraum gefunden.")
+        # Diagnose: Wie oft erfüllt jede Bedingung alleine?
+        _diagnose_entry_conditions(data, params["rsi_thr"], params["bb_pos_thr"], params["require_hist_rising"])
         return
 
-    df = pd.DataFrame(results)
+    periods = _cluster_periods_from_dates(buy_dates, max_gap_days=max_gap_days)
+    df_eval = _evaluate_periods(periods, data, Auswertung_tage, min_veraenderung)
 
-    hitrate = round(df["Treffer"].mean() * 100, 2)
+    if df_eval.empty:
+        st.info("Keine Perioden auswertbar.")
+        return
 
-    st.subheader("📈 RuleEngineV2 – Historische BUY‑Perioden")
-    st.metric("Trefferquote", f"{hitrate} %")
-    st.caption(f"Definition: ≥ {int(min_return*100)} % nach {hold_days} Tagen")
+    # Trefferquote nur über abgeschlossene Perioden (Signal != None)
+    df_done = df_eval[df_eval["Signal"].notna()].copy()
+    df_open = df_eval[df_eval["Signal"].isna()].copy()
 
-    with st.expander("📘 BUY‑Perioden (Details)"):
-        st.dataframe(df)
+    if len(df_done) > 0:
+        hitrate = round(df_done["Signal"].mean() * 100, 2)
+        st.metric("Trefferquote (nur abgeschlossene Perioden)", f"{hitrate} %")
+        st.write(f"Abgeschlossene Perioden: {len(df_done)} | Offene Perioden: {len(df_open)}")
+    else:
+        st.metric("Trefferquote (nur abgeschlossene Perioden)", "–")
+        st.write(f"Abgeschlossene Perioden: 0 | Offene Perioden: {len(df_open)}")
+
+    with st.expander("📘 Perioden-Bewertung (Details)"):
+        st.dataframe(df_eval)
+
+    # Optional: Perioden im Chart markieren (nutzt deine bestehende plot_priodenchart Funktion)
+    try:
+        df_plot = df_eval.copy()
+        df_plot["Start"] = pd.to_datetime(df_plot["Start"])
+        df_plot["Ende"] = pd.to_datetime(df_plot["Ende"])
+        # Signal None -> False für Plot (grau)
+        df_plot["Signal"] = df_plot["Signal"].fillna(False).astype(bool)
+
+        st.markdown("### 🗺️ Markierung der BUY-Perioden im Chart")
+        plot_priodenchart(data, symbol, version=999, kaufperioden=df_plot[["Start", "Ende", "Signal"]])
+    except Exception:
+        pass
+
+
+def _diagnose_entry_conditions(data: pd.DataFrame, rsi_thr: float, bb_pos_thr: float, require_hist_rising: bool):
+    """
+    Gibt dir eine Debug-Auswertung, warum 0 BUY-Tage entstehen:
+    zählt wie viele Tage jede Bedingung erfüllt.
+    """
+    if data is None or data.empty:
+        return
+    needed = ["Close", "BB_Upper", "BB_Lower", "RSI", "MACD_Hist"]
+    if any(c not in data.columns for c in needed):
+        st.info("Diagnose nicht möglich: erforderliche Spalten fehlen.")
+        return
+
+    rsi_ok = 0
+    bb_ok = 0
+    hist_neg = 0
+    hist_rise_ok = 0
+    all_ok = 0
+
+    for i in range(1, len(data)):
+        row = data.iloc[i]
+        prev = data.iloc[i - 1]
+        if pd.isna(row["Close"]) or pd.isna(row["BB_Upper"]) or pd.isna(row["BB_Lower"]) or pd.isna(row["RSI"]) or pd.isna(row["MACD_Hist"]):
+            continue
+
+        denom = float(row["BB_Upper"] - row["BB_Lower"])
+        bb_pos = float((row["Close"] - row["BB_Lower"]) / denom) if denom != 0 else 0.5
+
+        c_rsi = float(row["RSI"]) <= float(rsi_thr)
+        c_bb = (bb_pos <= float(bb_pos_thr)) or (float(row["Close"]) <= float(row["BB_Lower"]))
+        c_hist = float(row["MACD_Hist"]) < 0.0
+        c_rise = True
+        if require_hist_rising:
+            if pd.isna(prev["MACD_Hist"]):
+                c_rise = False
+            else:
+                c_rise = float(row["MACD_Hist"]) > float(prev["MACD_Hist"])
+
+        rsi_ok += int(c_rsi)
+        bb_ok += int(c_bb)
+        hist_neg += int(c_hist)
+        hist_rise_ok += int(c_rise) if require_hist_rising else 0
+
+        if c_rsi and c_bb and c_hist and (c_rise if require_hist_rising else True):
+            all_ok += 1
+
+    st.markdown("#### 🔎 Diagnose: Warum 0 BUY-Tage?")
+    st.write(f"RSI≤{rsi_thr}: {rsi_ok} Tage")
+    st.write(f"bb_pos≤{bb_pos_thr} oder Close≤BB_Lower: {bb_ok} Tage")
+    st.write(f"MACD_Hist<0: {hist_neg} Tage")
+    if require_hist_rising:
+        st.write(f"hist_rising (Hist[t]>Hist[t-1]): {hist_rise_ok} Tage")
+    st.write(f"ALLE Bedingungen zusammen: {all_ok} Tage")
         
 # ---------------------------------------------------------
 # Hilfsfunktion
