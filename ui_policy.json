@@ -1,9 +1,0 @@
-# Patch Instructions (Manual)
-
-This repo update provides new modules under `trading_v2/` and new config/docs files.
-
-Next, wire the Streamlit UI to use `RuleEngineV2` for the BUY/SELL decision used by:
-- Home watchlist traffic light
-- Tab "Handelsentscheidung"
-
-See Copilot response for the exact code blocks to paste into `streamlit_visualization_13.py`.
