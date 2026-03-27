@@ -896,16 +896,17 @@ def zeige_ruleengine_buy_perioden(
 ):
     """
     Zeigt historische BUY-Perioden der RuleEngineV2
-    und berechnet eine einfache Trefferquote.
+    (stateless Replay) und berechnet eine Trefferquote.
     """
 
-    engine = get_rule_engine()
-
-    buy_events = []
     results = []
 
-    # --- RuleEngine über Historie "abspielen" ---
+    # --- RuleEngineV2 STATELSS über Historie abspielen ---
     for i in range(50, len(data) - hold_days):
+
+        # ✅ NEUE Engine pro Zeitschritt (wichtig!)
+        engine = RuleEngineV2()
+
         hist_slice = data.iloc[: i + 1]
 
         decision = engine.evaluate(symbol, hist_slice)
@@ -930,15 +931,13 @@ def zeige_ruleengine_buy_perioden(
             })
 
     if not results:
-        st.info("Keine historischen BUY-Signale der RuleEngineV2 gefunden.")
+        st.warning("⚠️ Keine BUY-Signale der RuleEngineV2 in der Historie gefunden.")
         return
 
     df = pd.DataFrame(results)
 
-    # --- Trefferquote ---
     hitrate = round(df["Treffer"].mean() * 100, 2)
 
-    # --- UI ---
     st.subheader("📈 RuleEngineV2 – Historische BUY‑Perioden")
     st.metric("Trefferquote", f"{hitrate} %")
     st.caption(f"Definition: ≥ {int(min_return*100)} % nach {hold_days} Tagen")
