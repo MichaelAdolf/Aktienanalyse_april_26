@@ -1,0 +1,8 @@
+{
+  "mode": "rules_wfo_meta",
+  "meta": {
+    "enabled": true,
+    "threshold": 0.62,
+    "show_suppressed": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "labeling": {
+    "pt_pct": 0.08,
+    "sl_pct": 0.04,
+    "max_hold_days": 60
+  },
+  "lifecycle": {
+    "entry_window_days": 4,
+    "validation_bonus": 15,
+    "erosion_penalty": 8,
+    "erosion_margin": 5
+  },
+  "risk": {
+    "adx_thr": 30
+  },
+  "fees": {
+    "roundtrip_fee_pct": 0.002
+  },
+  "runtime": {
+    "entry_price_source": "close"
+  }
+}
