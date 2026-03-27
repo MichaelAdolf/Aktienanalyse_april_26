@@ -25,7 +25,6 @@ from SwingtradingSignale import(
     ATRQualityAnalysis,
     MarketRegimeAnalysis,
     EntryQualityAnalysis,
-    TradeDecisionEngine,
     PositionSizer,
     SwingSignalService,
     STRATEGY_RULES
@@ -262,7 +261,6 @@ def aktienseite():
     market_analysis = MarketRegimeAnalysis()
     atr_analysis = ATRQualityAnalysis()
     entryquality_analysis = EntryQualityAnalysis()
-    trade_decision = TradeDecisionEngine()
     swingsignal_analysis = SwingSignalService(thresholds, strategie)
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
@@ -309,7 +307,6 @@ def aktienseite():
     market_result["strategy"] = strategie
     rsi_result["trend_bias"] = thresholds["RSI"]["trend_bias"]
     entryquality_result = entryquality_analysis.analyse(bollinger_result, stochastic_result, market_result, ma_result, atr_result)
-    tradedecision_result = trade_decision.decide(market_result, rsi_result, macd_result, adx_result)
     swingsignal_analysed = swingsignal_analysis.run_analysis(data, Auswertung_tage, min_veraenderung, market_result, rsi_result, macd_result, adx_result)
    
     # ---------------------------------------------------------
@@ -535,75 +532,26 @@ def aktienseite():
     
     
     with tab_handel:
-        st.markdown("## 🧠 Decision (RuleEngineV2 – State Machine)")
-        st.write(f"**Signal:** {decision_v2.signal}")
-        st.write(f"**State:** {decision_v2.state}")
-        st.write(f"**Confidence:** {decision_v2.confidence:.2f}")
-        st.write("**Reasons:** " + ", ".join(decision_v2.reasons))
-        if decision_v2.meta:
-            st.write("**Meta:**")
-            st.json(decision_v2.meta)
-
+        
         with st.container(border=True):
-            st.markdown(f"### Handelsentscheidung – {tradedecision_result['interpretation_short']}")
-    
-            # --- ATR-basierte SL/TP via TradeRiskManager ---
-            atr = float(data["ATR"].iloc[-1])
-            letzter_close = float(data["Close"].iloc[-1])
-            regime = market_result.get("market_regime")  # "trend_market", "range_market", ...
-    
-            # Multiplikatoren aus der Zentrale
-            regime_mults = thresholds["ATR_MULTS"].get(regime, thresholds["ATR_MULTS"]["default"])
-    
-            from SwingtradingSignale import TradeRiskManager
-            position_typ = "long" if tradedecision_result["action"] == "BUY" else "short"
-    
-            trm = TradeRiskManager(einstiegskurs=letzter_close, regime=regime)
-            sl_tp = trm.sl_tp_by_atr(atr=atr, position_typ=position_typ, mults=regime_mults)
-    
-            stop_loss_kurs_berechnet = sl_tp["stop_loss"]
-            take_profit_kurs_berechnet = sl_tp["take_profit"]
-    
-            if tradedecision_result["action"] == "BUY":
-                sizer = PositionSizer(konto_groesse=10000)
-                pos = sizer.berechne_positionsgroesse(
-                    einstiegskurs=letzter_close,
-                    stop_loss_kurs=stop_loss_kurs_berechnet,
-                    risiko_prozent=1.0,
-                    confidence=tradedecision_result["confidence"],
-                    risiko_level=tradedecision_result["risk_level"]
-                )
-                st.success(f"Kaufe {pos['position_size']} Aktien")
-                st.info(f"Riskamount: {pos['risk_amount']}")
-                st.info(f"Stop-Loss-Abstand: {pos['stop_loss_abstand']}")
-                st.progress(int(round(tradedecision_result["confidence"] * 100)))
-            else:
-                st.error("Kein Long-Trade (BUY) – aktuelle Entscheidung: "
-                         f"{tradedecision_result['action']}")
-    
-            st.markdown(
-                f"**ATR‑SL/TP:** "
-                f"SL = {stop_loss_kurs_berechnet:.2f} (×{sl_tp.get('sl_mult_atr', '?')} ATR), "
-                f"TP = {take_profit_kurs_berechnet:.2f} (×{sl_tp.get('tp_mult_atr', '?')} ATR), "
-                f"Regime = {regime}"
-            )
-            st.info(f"Risk-Level: {tradedecision_result['risk_level']}")
-            st.info(f"Zusammenfassung: {tradedecision_result['summary']}")
-            st.info(f"Interpretation: {tradedecision_result['interpretation_long']}")
-            st.warning(f"Handlungsfazit: {tradedecision_result['action_hint']}")
+                st.markdown("## 🧠 Handelsentscheidung (RuleEngineV2)")
+        
+                st.write(f"**Signal:** {decision_v2.signal}")
+                st.write(f"**State:** {decision_v2.state}")
+                st.write(f"**Confidence:** {decision_v2.confidence:.2f}")
+                st.write("**Reasons:** " + ", ".join(decision_v2.reasons))
+        
+                if decision_v2.meta:
+                    st.write("**Meta‑Decision:**")
+                    st.json(decision_v2.meta)
+        
+                if decision_v2.signal == "BUY":
+                    st.success("✅ BUY – Entry Transition")
+                elif decision_v2.signal == "SELL":
+                    st.error("❌ SELL – Exit Transition")
+                else:
+                    st.info("⏸ HOLD – kein Transition‑Tag")
 
-        with st.container(border=True):
-                st.markdown(f"### Handelsentscheidung – Über eingestellten AUSWERTUNG TAGE mit eingestellten MINDESTKURSANSTIEG")
-                zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
-
-        with st.container(border=True):
-            st.markdown(f"### Entscheidungsgrundlage – {tradedecision_result["interpretation_short"]}")
-            entscheidung_text = (f"Entscheidung: {tradedecision_result["action"]}\n" f"Position: {tradedecision_result["position_type"]}\n" f"Risiko: {tradedecision_result["risk_level"]}\n" f"Entscheidungsgrundlage: {tradedecision_result["reason"]}\n")
-            st.text_area("Entscheidung Interpretation", entscheidung_text, key=f"Entscheidung_interpretation_{name}")
-            st.info(f"Zusammenfassung: {tradedecision_result['summary']}")
-            st.info(f"Interpretation: {tradedecision_result["interpretation_long"]}")
-            st.warning(f"Handlungsfazit: {tradedecision_result['action_hint']}")
-            st.progress(int(round(tradedecision_result["confidence"] * 100)))
         
         col1, col2 = st.columns([1,1])
         # ---------------------------------------------------------
