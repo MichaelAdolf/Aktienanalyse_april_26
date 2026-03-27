@@ -647,8 +647,8 @@ def aktienseite():
         )
     
         # Excel erzeugen (Bytes) + DataFrame Vorschau + fehlende Spalten
-        excel_bytes, df_export, missing_cols = build_indicator_export_excel(data_full, symbol, years=1.5)
-    
+        export_bytes, df_export, missing_cols, export_type = build_indicator_export_excel(data_full, symbol, years=1.5)
+
         # Optional: Hinweis auf fehlende Spalten
         if missing_cols:
             st.warning(
@@ -657,12 +657,18 @@ def aktienseite():
             )
     
         # Download-Button
-        file_name = f"{symbol}_Indicators_Last_18M.xlsx"
+        if export_type == "xlsx":
+            file_name = f"{symbol}_Indicators_Last_18M.xlsx"
+            mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            file_name = f"{symbol}_Indicators_Last_18M.csv"
+            mime = "text/csv"
+        
         st.download_button(
-            label="⬇️ Excel herunterladen (letzte 1,5 Jahre)",
-            data=excel_bytes,
+            label="⬇️ Download (letzte 1,5 Jahre)",
+            data=export_bytes,
             file_name=file_name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            mime=mime
         )
     
         # Optional: kleine Vorschau
@@ -938,20 +944,32 @@ def build_indicator_export_excel(data_full: pd.DataFrame, symbol: str, years: fl
     date_col = df_export.columns[0]  # i.d.R. "Date" oder "index"
     df_export = df_export.rename(columns={date_col: "Datum"})
 
-    # Excel erzeugen
+    
+    # Excel erzeugen (wenn openpyxl verfügbar), sonst CSV-Fallback
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        sheet = "Indicators_18M"
-        df_export.to_excel(writer, index=False, sheet_name=sheet)
 
-        # Optional: Spaltenbreite grob anpassen
-        ws = writer.sheets[sheet]
-        for col_idx, col_name in enumerate(df_export.columns, start=1):
-            width = max(10, min(35, len(str(col_name)) + 2))
-            ws.column_dimensions[chr(64 + col_idx)].width = width
+    try:
+        import openpyxl  # noqa: F401  (nur Verfügbarkeitscheck)
 
-    output.seek(0)
-    return output.getvalue(), df_export, missing
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            sheet = "Indicators_18M"
+            df_export.to_excel(writer, index=False, sheet_name=sheet)
+
+            # Optional: Spaltenbreite grob anpassen
+            ws = writer.sheets[sheet]
+            for col_idx, col_name in enumerate(df_export.columns, start=1):
+                width = max(10, min(35, len(str(col_name)) + 2))
+                col_letter = ws.cell(row=1, column=col_idx).column_letter
+                ws.column_dimensions[col_letter].width = width
+
+        output.seek(0)
+        return output.getvalue(), df_export, missing, "xlsx"
+
+    except Exception:
+        # Fallback: CSV
+        csv_bytes = df_export.to_csv(index=False).encode("utf-8")
+        return csv_bytes, df_export, missing, "csv"
+
 
 
 # ---------------------------------------------------------
