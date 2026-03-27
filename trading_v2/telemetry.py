@@ -13,5 +13,5 @@ def write_daily_log(date: str, ticker: str, payload: Dict[str, Any]) -> None:
     path = LOG_DIR / f"signals_{date}.jsonl"
     record = {'date': date, 'ticker': ticker, **payload}
     with path.open('a', encoding='utf-8') as f:
-        f.write(json.dumps(record, ensure_ascii=False)
+        f.write(json.dumps(record, ensure_ascii=False) + "\n"
 )
