@@ -396,6 +396,10 @@ def aktienseite():
                 else:
                     st.info("⏸ HOLD – kein Trade")
 
+            # ✅ historische Auswertung
+            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
+
+
         # --- 2️⃣ RECHTE SPALTE ---
         with col3:
             with st.container(border=True):   
