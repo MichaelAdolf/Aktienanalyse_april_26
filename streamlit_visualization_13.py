@@ -452,8 +452,7 @@ def aktienseite():
         with col2:
             with st.container(border=True):
                 st.subheader("Bollinger Analyse")
-                main_analyzer.plot_bollinger(name, 1)
-                st.metric("Volatilität (Bollinger Bandbreite):", f"{bollinger_result['bandwidth']:.2f}")              
+                main_analyzer.plot_bollinger(name, 1)             
                 boll_interp = bollinger_result.get("interpretation", {})
                 if boll_interp:
                     st.markdown(f"### {boll_interp.get('headline','Bollinger')}")
@@ -481,7 +480,6 @@ def aktienseite():
                 indikatoren_diagram.plot_macd(data, symbol)
                 st.markdown(f"### MACD – {macd_interp.get('headline', '')}")
                 render_interp(macd_interp)
-                st.progress(int(round(macd_result["strength"] * 100)))
                         
         col1, col2 = st.columns([1,1])
         # ---------------------------------------------------------
@@ -503,7 +501,6 @@ def aktienseite():
                 indikatoren_diagram.plot_adx(data, symbol)
                 st.markdown(f"### ADX Analyse – {macd_interp.get('headline', '')}")
                 render_interp(adx_result["interpretation"])
-                st.progress(int(round(adx_result["strength"] * 100)))
 
     
     
