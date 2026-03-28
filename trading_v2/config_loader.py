@@ -54,7 +54,18 @@ def resolve_params(symbol: str, mode: str, global_cfg: Dict[str, Any], learned: 
         'rsi_thr': 35,
         'bb_pos_thr': 0.20,
         'require_hist_rising': False,
+        'entry_window_days': 4,
+        'validation_bonus': 15,
+        'erosion_penalty': 8,
+        'erosion_margin': 5,
     }
+    profile = global_cfg.get("active_profile")
+    if profile:
+        from config_thresholds import PROFILES
+        prof = PROFILES.get(profile, {})
+        for block in ("ENTRY", "CONFIDENCE"):
+            if block in prof:
+                params.update(prof[block])
     # allow defining defaults in global.json (optional)
     defaults = (global_cfg.get('defaults') or {}) if isinstance(global_cfg, dict) else {}
     params.update({k: defaults[k] for k in params.keys() if k in defaults})
