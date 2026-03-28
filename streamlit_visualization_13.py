@@ -255,7 +255,17 @@ def aktienseite():
 
     # thresholds = get_thresholds(symbol=symbol, sector=sector)
     thresholds = get_thresholds(symbol if use_auto else None, sector)  # learned aus/an
-    strategie = st.sidebar.selectbox("Strategie-Profil", ["Conservative", "Balanced", "Aggressive"], index=0)
+    st.sidebar.subheader("🧠 Strategie-Profil")
+    profile = st.sidebar.selectbox(
+        "Profil wählen",
+        ["Conservative", "Balanced", "Aggressive"],
+        index=0
+    )
+    
+    # global verfügbar machen
+    from config_loader import load_global
+    global_cfg = load_global()
+    global_cfg["active_profile"] = profile
     thresholds = apply_profile(thresholds, strategie)
 
 
