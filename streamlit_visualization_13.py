@@ -19,7 +19,6 @@ from trading_v2.wfo_optimizer import (optimize_symbol_wfo, write_learned, write_
 from SwingtradingSignale import(
     RSIAnalysis,
     MACDAnalysis,
-    MACDAnalysis_Confirmations,
     ADXAnalysis,
     MAAnalysis,
     BollingerAnalysis,
