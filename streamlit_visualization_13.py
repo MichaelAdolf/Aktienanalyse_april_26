@@ -494,7 +494,7 @@ def aktienseite():
                 # Stochastic Oscillator Chart
                 st.subheader("Stochastics Analyse")
                 indikatoren_diagram.plot_stoch(data, symbol)
-                render_interp(stoch_interp)
+                render_interp(stochastic_result["interpretation"])
         
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
