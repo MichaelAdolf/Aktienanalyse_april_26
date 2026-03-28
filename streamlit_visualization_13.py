@@ -73,6 +73,27 @@ def go_to(page_name):
 def get_rule_engine():
     return RuleEngineV2()
 
+
+def render_interp(interp: dict):
+    """
+    Rendert Interpretation (headline/meaning/status/level) rein als UI.
+    Keine Logik, nur Darstellung.
+    """
+    if not isinstance(interp, dict):
+        st.caption(str(interp))
+        return
+
+    level = interp.get("level", "caption")
+    meaning = interp.get("meaning", "")
+
+    if level == "warning":
+        st.warning(meaning)
+    elif level == "info":
+        st.info(meaning)
+    else:
+        st.caption(meaning)
+
+
 def home_page():
     watchlist = lade_aktien()
     # --------------------------------------------------
@@ -419,20 +440,29 @@ def aktienseite():
             with st.container(border=True):
                 st.subheader("MA10 und MA50 Analyse")
                 main_analyzer.plot_MA(name, 1)
+                # --- Interaktive MA-Interpretation aus Analyse-Layer ---
+                ma_analyser = MAAnalysis(short_window=10, long_window=50)
+                ma_result = ma_analyser.analyse(data)
+                ma_interp = ma_result.get("interpretation", {})
+        
+                st.markdown(f"### {ma_interp.get('headline', 'MA10/MA50')}")
+                render_interp(ma_interp)
+        
+                # Optional: kleine Faktenbox für Einsteiger (rein informativ)
+                st.caption(
+                    f"MA10: {ma_result.get('ma_short')} | MA50: {ma_result.get('ma_long')} | "
+                    f"Trend: {ma_result.get('ma_trend')} | Crossover: {ma_result.get('ma_cross')}"
+                )
+
         with col2:
             with st.container(border=True):
                 st.subheader("Bollinger Analyse")
                 main_analyzer.plot_bollinger(name, 1)
-                st.metric("Volatilität (Bollinger Bandbreite):", f"{bollinger_result['bandwidth']:.2f}")
-                st.info(f"Zusammenfassung: {bollinger_result["summary"]}")
-                st.info(f"Interpretation: {bollinger_result["interpretation_long"]}")
-                col11, col12 = st.columns(2)
-                with col11:
-                    st.success(f"Chance: {bollinger_result['chance']}")
-                with col12:
-                    st.warning(f"Risiko: {bollinger_result['risk']}")
-                st.write()
-                st.info(f"Handlungsfazit: {bollinger_result['action_hint']}")
+                st.metric("Volatilität (Bollinger Bandbreite):", f"{bollinger_result['bandwidth']:.2f}")              
+                boll_interp = bollinger_result.get("interpretation", {})
+                if boll_interp:
+                    st.markdown(f"### {boll_interp.get('headline','Bollinger')}")
+                    render_interp(boll_interp)
 
         col1, col2 = st.columns([1,1])
         # ---------------------------------------------------------
@@ -442,16 +472,9 @@ def aktienseite():
             with st.container(border=True):
                 indikatoren_boards.rsi_databoard(rsi_latest, rsi_history)
                 indikatoren_diagram.plot_rsi(data, symbol)
-                #rsi_text = (f"Regime: {rsi_result['regime']}\n" f"State: {rsi_result['state']}\n" f"Bias: {rsi_result['bias']}")
-                st.markdown(f"### RSI – {rsi_interp['headline']}")
-                st.info(f"Interpretation: {rsi_interp["meaning"]}")
-                col11, col12 = st.columns(2)
-                with col11:
-                    st.success(f"Chance: {rsi_interp['chance']}")
-                with col12:
-                    st.warning(f"Risiko: {rsi_interp['risk']}")
-                st.info(f"Handlungsfazit: {rsi_interp['typical_action']}")
-                st.progress(int(round(rsi_result["strength"] * 100)))
+                #rsi_text = (f"Regime: {rsi_result['regime']}\n" f"State: {rsi_result['state']}\n" f"Bias: {rsi_result['bias']}")            
+                st.markdown(f"### RSI – {rsi_interp.get('headline', '')}")
+                render_interp(rsi_interp)
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
         # ---------------------------------------------------------
@@ -463,33 +486,8 @@ def aktienseite():
                 indikatoren_diagram.plot_macd(data, symbol)
                 macd_text = (f"Regime: {macd_result['regime']}\n" f"State: {macd_result['state']}\n" f"Bias: {macd_result['bias']}")
                 st.text_area("MACD Interpretation", macd_text, key=f"macd_interpretation_{name}")
-                st.markdown(f"### MACD – {macd_interp['headline']}")
-                st.info(f"Interpretation: {macd_interp["meaning"]}")
-                col11, col12 = st.columns(2)
-                with col11:
-                    st.success(f"Chance: {macd_interp['chance']}")
-                with col12:
-                    st.warning(f"Risiko: {macd_interp['risk']}")
-                st.info(f"Handlungsfazit: {macd_interp['typical_action']}")
-                st.progress(int(round(macd_result["strength"] * 100)))
-
-        col1, col2 = st.columns([1,1])
-        with col2:
-            with st.container(border=True):
-                # MACD Chart
-                indikatoren_boards.macd_databoard(macd_zwei_result["histogram"], macd_zwei_result["signal"], macd_zwei_result["macd"])
-                #macd_analyzer.plot_macd(data, symbol)
-                #indikatoren_diagram.plot_macd(data, symbol)
-                macd_text = (f"Regime: {macd_zwei_result['regime']}\n" f"State: {macd_zwei_result['state']}\n" f"Bias: {macd_zwei_result['bias']}")
-                st.text_area("MACD Interpretation", macd_text, key=f"macd_interpretation1_{name}")
-                st.markdown(f"### MACD – {macd_zwei_interp['headline']}")
-                st.info(f"Interpretation: {macd_zwei_interp["meaning"]}")
-                col11, col12 = st.columns(2)
-                with col11:
-                    st.success(f"Chance: {macd_zwei_interp['chance']}")
-                with col12:
-                    st.warning(f"Risiko: {macd_zwei_interp['risk']}")
-                st.info(f"Handlungsfazit: {macd_zwei_interp['typical_action']}")
+                st.markdown(f"### MACD – {macd_interp.get('headline', '')}")
+                render_interp(macd_interp)
                 st.progress(int(round(macd_result["strength"] * 100)))
                         
         col1, col2 = st.columns([1,1])
@@ -503,15 +501,8 @@ def aktienseite():
                 indikatoren_diagram.plot_stoch(data, symbol)
                 st.info(f"Zusammenfassung: {stochastic_result['summary']}")
                 st.text_area("Stochastics Zusammenfassung:", stochastic_result['summary'], key=f"stochastics_zusammenfassung_{name}")
-                st.markdown(f"### RSI – {stochastic_result['interpretation_short']}")
-                st.info(f"Interpretation: {stochastic_result["interpretation_long"]}")
-                st.write()
-                col11, col12 = st.columns(2)
-                with col11:
-                    st.success(f"Chance: {bollinger_result['chance']}")
-                with col12:
-                    st.warning(f"Risiko: {bollinger_result['risk']}")
-                st.info(f"Handlungsfazit: {stochastic_result['action_hint']}")
+                st.markdown(f"### Stochastics Analyse – {stoch_interp.get('headline', '')}")
+                render_interp(stoch_interp)
         
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
@@ -522,15 +513,8 @@ def aktienseite():
                 indikatoren_diagram.plot_adx(data, symbol)
                 adx_text = (f"Regime: {adx_result['regime']}\n" f"State: {adx_result['state']}\n" f"Bias: {adx_result['bias']}")
                 st.text_area("ADX Interpretation", adx_text, key=f"adx_interpretation_{name}")
-                st.markdown(f"### ADX – {adx_result['interpretation_short']}")
-                st.metric(adx_result["interpretation_short"], adx_result["trend_acceleration"])
-                st.info(f"Interpretation: {adx_result['interpretation_long']}")
-                col11, col12 = st.columns(2)
-                with col11:
-                    st.success(f"Chance: {adx_result['chance']}")
-                with col12:
-                    st.warning(f"Risiko: {adx_result['risk']}")
-                st.info(f"Handlungsfazit: {adx_result['action_hint']}")
+                st.markdown(f"### ADX Analyse – {macd_interp.get('headline', '')}")
+                render_interp(adx_interp)
                 st.progress(int(round(adx_result["strength"] * 100)))
 
     
