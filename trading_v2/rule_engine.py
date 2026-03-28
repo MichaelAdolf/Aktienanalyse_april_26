@@ -26,6 +26,17 @@ class RuleEngineV2:
         self.meta_model = meta_model or MetaModel(None)
 
     def evaluate(self, symbol: str, df: pd.DataFrame) -> Decision:
+        # ✅ IMMER definieren – Baseline (Conservative)
+        params = {
+            "rsi_thr": 35,
+            "bb_pos_thr": 0.20,
+            "require_hist_rising": False,
+            "entry_window_days": 4,
+            "validation_bonus": 15,
+            "erosion_penalty": 8,
+            "erosion_margin": 5,
+        }
+        
         # --- config ---
         lifecycle = self.global_cfg.get('lifecycle', {})
         labeling = self.global_cfg.get('labeling', {})
@@ -37,7 +48,9 @@ class RuleEngineV2:
         adx_thr = float(risk.get('adx_thr', 30))
 
         mode = self.policy.mode
-        params = resolve_params(symbol, mode, self.global_cfg, self.learned)
+        resolved = resolve_params(symbol, mode, self.global_cfg, self.learned)
+        if resolved:
+                params.updat(resolved)
         rsi_thr = float(params.get('rsi_thr', 35))
         bb_pos_thr = float(params.get('bb_pos_thr', 0.20))
         require_hist_rising = bool(params.get('require_hist_rising', False))
