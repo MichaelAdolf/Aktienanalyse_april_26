@@ -342,7 +342,7 @@ def aktienseite():
     # ---------------------------------------------------------
     # Definition der TABS
     # ---------------------------------------------------------
-    tab_overview, tab_handel, tabqualität, tab_charts, tab_ichimoku, tab_fundamentals, tab_export, Algorithmus = st.tabs(
+    tab_overview, tab_handel, tab_qualität, tab_charts, tab_ichimoku, tab_fundamentals, tab_export, Algorithmus = st.tabs(
         ["📈 Übersicht", "🔔Handelsentscheidung", "🎯Algorithmus-Qualität", "📊 Charts", "🌥️ Ichimoku", "🏦 Fundamentaldaten", "📤Export", "Algorithmus"]
     )
     # ---------------------------------------------------------
