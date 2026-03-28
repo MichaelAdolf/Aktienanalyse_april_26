@@ -342,30 +342,25 @@ def aktienseite():
     # ---------------------------------------------------------
     # Definition der TABS
     # ---------------------------------------------------------
-    tab_overview, tab_charts, tab_handel, tab_ichimoku, tab_fundamentals, tab_rsi, Algorithmus = st.tabs(
-        ["📈 Übersicht", "📊 Charts", "🔔Handelsentscheidung", "🌥️ Ichimoku", "🏦 Fundamentaldaten", "RSI", "Algorithmus"]
+    tab_overview, tab_handel, tabqualität, tab_charts, tab_ichimoku, tab_fundamentals, tab_export, Algorithmus = st.tabs(
+        ["📈 Übersicht", "🔔Handelsentscheidung", "🎯Algorithmus-Qualität", "📊 Charts", "🌥️ Ichimoku", "🏦 Fundamentaldaten", "📤Export", "Algorithmus"]
     )
     # ---------------------------------------------------------
     # TAB Overview
     # ---------------------------------------------------------
     with tab_overview:
-        
         with st.container(border=True):
-                # ... dein bestehender Inhalt ...
                 # --- Kalibrierungs-Button ---
                 if st.button("🔁 Parameter für dieses Symbol rekalibrieren (WFO V2)"):
                     with st.spinner("WFO: Grid + Triple-Barrier Labels…"):
                         try:
                             report = optimize_symbol_wfo(symbol, data_full)
                             params = report.get("best_params", {}) or {}
-                
                             write_learned(symbol, params)
                             rep_path = write_report(report)
-                
                             st.success(f"WFO fertig. Best OOS hit rate: {report.get('best_oos_hit_rate', 0):.3f}")
                             st.json(params)
                             st.info(f"Report gespeichert: {rep_path}")
-                
                             st.cache_data.clear()
                         except Exception as e:
                             st.error(f"WFO fehlgeschlagen: {e}")
@@ -423,8 +418,68 @@ def aktienseite():
                     f"- **ADX:** {adx_result['trend_acceleration']}"
                     )
 
+    # ---------------------------------------------------------
+    # TAB HANDEL
+    # ---------------------------------------------------------
+    with tab_handel:
+        with st.container(border=True):
+                st.markdown("## 🧠 Handelsentscheidung (RuleEngineV2)")
+                st.write(f"**Signal:** {decision_v2.signal}")
+                st.write(f"**State:** {decision_v2.state}")
+                st.write(f"**Confidence:** {decision_v2.confidence:.2f}")
+                st.write("**Reasons:** " + ", ".join(decision_v2.reasons))
         
-            
+                if decision_v2.meta:
+                    st.write("**Meta‑Decision:**")
+                    st.json(decision_v2.meta)
+                if decision_v2.signal == "BUY":
+                    st.success("✅ BUY – Entry Transition")
+                elif decision_v2.signal == "SELL":
+                    st.error("❌ SELL – Exit Transition")
+                else:
+                    st.info("⏸ HOLD – kein Transition‑Tag")
+        
+        col1, col2 = st.columns([1,1])
+        with col1:
+            with st.container(border=True):
+                st.markdown(f"### Markt Analyse – {market_result["interpretation_short"]}")
+                market_text = (f"Regime: {market_result["market_regime"]}\n" f"Bias: {market_result["trade_bias"]}")
+                st.text_area("Markt Interpretation", market_text, key=f"market_interpretation_{name}")
+                st.info(f"Zusammenfassung: {market_result['summary']}")
+                st.info(f"Interpretation: {market_result['interpretation_long']}")
+                st.warning(f"Handlungsfazit: {market_result['action_hint']}")
+                st.progress(int(round(market_result["confidence"] * 100)))
+
+        with col2:
+            with st.container(border=True):
+                st.markdown(f"### Eintritt Analyse (Qualität) – {entryquality_result["interpretation_short"]}")
+                st.info(f"Zusammenfassung: {entryquality_result["summary"]}")
+                st.info(f"Interpretation: {entryquality_result["interpretation_long"]}")
+                st.warning(f"Handlungsfazit: {entryquality_result['action_hint']}")
+                st.write(entryquality_result["interpretation"])    
+    
+    # ---------------------------------------------------------
+    # TAB Qualität
+    # ---------------------------------------------------------
+    with tab_qualität:
+        # --- 2 Spalten Layout ---
+        col1, col2 = st.columns([1,1])
+
+        # --- 1️⃣ LINKE SPALTE ---
+        with col1:
+            # ✅ historische Auswertung
+            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
+
+        # --- 2️⃣ MITTLERE SPALTE ---
+        with col2:
+            with st.container(border=True):
+                zeige_ruleengine_buyperioden_und_trefferquote(
+                    data=data,
+                    symbol=symbol,
+                    Auswertung_tage=Auswertung_tage,
+                    min_veraenderung=min_veraenderung,
+                    max_gap_days=5
+                )
 
     # ---------------------------------------------------------
     # TAB CHARTS
@@ -505,55 +560,7 @@ def aktienseite():
                 indikatoren_diagram.plot_adx(data, symbol)
                 st.markdown(f"### ADX Analyse – {macd_interp.get('headline', '')}")
                 render_interp(adx_result["interpretation"])
-
-    
-    
-    with tab_handel:
-        
-        with st.container(border=True):
-                st.markdown("## 🧠 Handelsentscheidung (RuleEngineV2)")
-        
-                st.write(f"**Signal:** {decision_v2.signal}")
-                st.write(f"**State:** {decision_v2.state}")
-                st.write(f"**Confidence:** {decision_v2.confidence:.2f}")
-                st.write("**Reasons:** " + ", ".join(decision_v2.reasons))
-        
-                if decision_v2.meta:
-                    st.write("**Meta‑Decision:**")
-                    st.json(decision_v2.meta)
-        
-                if decision_v2.signal == "BUY":
-                    st.success("✅ BUY – Entry Transition")
-                elif decision_v2.signal == "SELL":
-                    st.error("❌ SELL – Exit Transition")
-                else:
-                    st.info("⏸ HOLD – kein Transition‑Tag")
-
-        
-        col1, col2 = st.columns([1,1])
-        # ---------------------------------------------------------
-        # LINKE SPALTE
-        # ---------------------------------------------------------
-        with col1:
-            with st.container(border=True):
-                st.markdown(f"### Markt Analyse – {market_result["interpretation_short"]}")
-                market_text = (f"Regime: {market_result["market_regime"]}\n" f"Bias: {market_result["trade_bias"]}")
-                st.text_area("Markt Interpretation", market_text, key=f"market_interpretation_{name}")
-                st.info(f"Zusammenfassung: {market_result['summary']}")
-                st.info(f"Interpretation: {market_result['interpretation_long']}")
-                st.warning(f"Handlungsfazit: {market_result['action_hint']}")
-                st.progress(int(round(market_result["confidence"] * 100)))
-
-        with col2:
-            with st.container(border=True):
-                st.markdown(f"### Eintritt Analyse (Qualität) – {entryquality_result["interpretation_short"]}")
-                st.info(f"Zusammenfassung: {entryquality_result["summary"]}")
-                st.info(f"Interpretation: {entryquality_result["interpretation_long"]}")
-                st.warning(f"Handlungsfazit: {entryquality_result['action_hint']}")
-                st.write(entryquality_result["interpretation"])
-
-        
-
+                
     with tab_ichimoku:
         # ---------------------------------------------------------
         # Hauptchart
@@ -581,7 +588,7 @@ def aktienseite():
             # Fundamentaldaten
             technicalmetrics.zeige_fundamentaldaten(fundamentaldaten)
         
-    with tab_rsi:
+    with tab_export:
         st.subheader("📥 Export: RSI & Indikatoren (letzte 1,5 Jahre)")
     
         st.write(
@@ -619,24 +626,6 @@ def aktienseite():
             st.dataframe(df_export.head(20))
                 
     with Algorithmus:
-        # --- 2 Spalten Layout ---
-        col1, col2 = st.columns([1,1])
-
-        # --- 1️⃣ LINKE SPALTE ---
-        with col1:
-            # ✅ historische Auswertung
-            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
-
-        # --- 2️⃣ MITTLERE SPALTE ---
-        with col2:
-            with st.container(border=True):
-                zeige_ruleengine_buyperioden_und_trefferquote(
-                    data=data,
-                    symbol=symbol,
-                    Auswertung_tage=Auswertung_tage,
-                    min_veraenderung=min_veraenderung,
-                    max_gap_days=5
-                )
         with st.expander("Aktive Parameter (nach Merge)"):
             st.json(thresholds)
 
