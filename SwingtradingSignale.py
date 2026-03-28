@@ -365,6 +365,7 @@ class ADXAnalysis:
             regime = "emerging_trend"
             state = f"{direction}_emerging"
             bias = "wait_for_confirmation"
+            strength = (adx - self.weak_trend) / (self.strong_trend - self.weak_trend)
             interp = _interp(
                 "ADX: Seitwärtsmarkt (schwacher Trend bildet sich)",
                 "Der ADX ist niedrig. Das bedeutet: es gibt aktuell keinen starken Trend – der Markt ist eher seitwärts, jedoch zeigen sich Ansätze für einen Trend. "
