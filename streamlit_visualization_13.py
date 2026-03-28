@@ -479,8 +479,6 @@ def aktienseite():
                 indikatoren_boards.macd_databoard(macd_result["hist"], macd_result["signal"], macd_result["macd"])
                 #macd_analyzer.plot_macd(data, symbol)
                 indikatoren_diagram.plot_macd(data, symbol)
-                macd_text = (f"Regime: {macd_result['regime']}\n" f"State: {macd_result['state']}\n" f"Bias: {macd_result['bias']}")
-                st.text_area("MACD Interpretation", macd_text, key=f"macd_interpretation_{name}")
                 st.markdown(f"### MACD – {macd_interp.get('headline', '')}")
                 render_interp(macd_interp)
                 st.progress(int(round(macd_result["strength"] * 100)))
