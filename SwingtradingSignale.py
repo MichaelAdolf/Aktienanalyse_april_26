@@ -582,7 +582,7 @@ class MAAnalysis:
             "distance": 0.0,
             "strength": 0.0,
             "atr": None,
-            "interpretation": _interp("MA-Analyse: nicht verfügbar", reason, status="invalid", level="caption
+            "interpretation": _interp("MA-Analyse: nicht verfügbar", reason, status="invalid", level="caption")
         }
     
 class BollingerAnalysis:
