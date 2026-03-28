@@ -238,6 +238,7 @@ class MACDAnalysis:
         # Histogramm-Status (DAS ist der Fokus)
         if hist < 0 and hist_trend > 0:
             state = "neg_rising"
+            bias = "caution_short"
             interp = _interp(
                 "MACD: Abwärtsdruck lässt nach",
                 "Das MACD‑Histogramm ist noch negativ, wird aber weniger negativ. "
@@ -247,6 +248,7 @@ class MACDAnalysis:
             )
         elif hist < 0:
             state = "neg_falling"
+            bias = "trend_follow_short"
             interp = _interp(
                 "MACD: Negatives Momentum",
                 "Das MACD‑Histogramm ist negativ. Das bedeutet: der Markt hat aktuell eher Abwärtsmomentum. "
@@ -256,6 +258,7 @@ class MACDAnalysis:
             )
         elif hist > 0 and hist_trend >= 0:
             state = "pos_rising"
+            bias = "trend_follow_long"
             interp = _interp(
                 "MACD: Positives Momentum",
                 "Das MACD‑Histogramm ist positiv und steigt. Das spricht für Aufwärtsmomentum.",
@@ -264,6 +267,7 @@ class MACDAnalysis:
             )
         elif hist > 0:
             state = "pos_falling"
+            bias = "wait"
             interp = _interp(
                 "MACD: Momentum schwächt ab",
                 "Das Histogramm ist noch positiv, nimmt aber ab. Das kann auf eine Pause/Konsolidierung hindeuten.",
@@ -272,6 +276,7 @@ class MACDAnalysis:
             )
         else:
             state = "neutral"
+            bias = "wait"
             interp = _interp(
                 "MACD: Neutral",
                 "Das Momentum ist aktuell ausgeglichen.",
@@ -287,6 +292,7 @@ class MACDAnalysis:
             "hist": round(hist, 4),
             "regime": regime,
             "state": state,
+            "bias": bias,
             "strength": round(float(strength), 2),
             "interpretation": interp
         }
