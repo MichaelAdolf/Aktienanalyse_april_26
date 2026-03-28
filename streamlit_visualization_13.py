@@ -476,7 +476,7 @@ def aktienseite():
         with col2:
             with st.container(border=True):
                 # MACD Chart
-                indikatoren_boards.macd_databoard(macd_result["histogram"], macd_result["signal"], macd_result["macd"])
+                indikatoren_boards.macd_databoard(macd_result["hist"], macd_result["signal"], macd_result["macd"])
                 #macd_analyzer.plot_macd(data, symbol)
                 indikatoren_diagram.plot_macd(data, symbol)
                 macd_text = (f"Regime: {macd_result['regime']}\n" f"State: {macd_result['state']}\n" f"Bias: {macd_result['bias']}")
