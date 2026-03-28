@@ -266,8 +266,6 @@ def aktienseite():
     # global verfügbar machen
     global_cfg = load_global()
     global_cfg["active_profile"] = profile
-    thresholds = apply_profile(thresholds, strategie)
-
 
     # ---------------------------------------------------------
     
