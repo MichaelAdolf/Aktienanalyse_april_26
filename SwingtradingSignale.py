@@ -24,6 +24,18 @@ STRATEGY_RULES = {
     },
 }
 
+
+
+def _interp(headline: str, meaning: str, status: str = "neutral", level: str = "caption") -> dict:
+    return {
+        "headline": headline,
+        "meaning": meaning,
+        "status": status,
+        "level": level
+    }
+
+
+
 # -------------------------------------------------
 # Trader Decision Matrix: wie Profile Entscheidungen treffen
 # -------------------------------------------------
@@ -97,62 +109,62 @@ class RSIAnalysis:
             state = "oversold"
             bias = "mean_reversion_long"
             strength = min(1.0, (self.oversold - rsi) / self.oversold + 0.3)
-            interpretation = {
-                "headline": "Stark überverkauft",
-                "meaning": "Der Kurs wurde stark verkauft und ist technisch überdehnt.",
-                "chance": "Kurzfristige technische Erholung möglich.",
-                "risk": "In starken Abwärtstrends kann der RSI lange überverkauft bleiben.",
-                "typical_action": "Nur für kurzfristige Trades geeignet"
-            }
+            interpretation = _interp(
+                "RSI: Stark überverkauft",
+                "Der RSI ist sehr niedrig. Das bedeutet: der Markt war zuletzt stark unter Druck und ist kurzfristig technisch überdehnt. "
+                "Eine Gegenbewegung ist möglich, aber in starken Abwärtstrends kann Schwäche länger anhalten.",
+                status="oversold",
+                level="info"
+            )
 
         elif rsi >= self.overbought:
             state = "overbought"
             bias = "mean_reversion_short"
-            strength = min(1.0, (rsi - self.overbought) / (100 - self.overbought) + 0.3)
-            interpretation = {
-                "headline": "Stark überkauft",
-                "meaning": "Der Kurs ist kurzfristig stark gestiegen und technisch überdehnt.",
-                "chance": "Rücksetzer oder Seitwärtsphase möglich.",
-                "risk": "In starken Aufwärtstrends kann der RSI lange überkauft bleiben.",
-                "typical_action": "Gewinne absichern oder Teilverkäufe prüfen"
-            }
+            strength = min(1.0, (rsi - self.overbought) / (100 - self.overbought) + 0.3)           
+            interpretation = _interp(
+                "RSI: Stark überkauft",
+                "Der RSI ist sehr hoch. Das bedeutet: der Markt war zuletzt sehr stark. "
+                "Kurzfristig sind Pausen, Rücksetzer oder Seitwärtsphasen möglich – besonders wenn die Bewegung sehr steil war.",
+                status="overbought",
+                level="warning"
+            )
 
         else:
             if market_regime == "bullish" and rsi >= 55:
                 state = "bullish_strength"
                 bias = "trend_follow_long"
-                strength = (rsi - 50) / 50
-                interpretation = {
-                    "headline": "Trendstärke im Aufwärtstrend",
-                    "meaning": "Der RSI bestätigt einen stabilen Aufwärtstrend.",
-                    "chance": "Trendfortsetzung wahrscheinlich.",
-                    "risk": "Überhitzung bei sehr schnellem Anstieg möglich.",
-                    "typical_action": "Trendfolge – Rücksetzer abwarten"
-                }
+                strength = (rsi - 50) / 50  
+                interpretation = _interp(
+                    "RSI: Trendstärke (Aufwärtsphase)",
+                    "Der RSI bestätigt eine stabile Stärke. Das spricht eher für eine laufende Aufwärtsphase, "
+                    "aber nicht zwingend für einen Einstieg – Rücksetzer können normal sein.",
+                    status="bullish_strength",
+                    level="info"
+                )
 
             elif market_regime == "bearish" and rsi <= 45:
                 state = "bearish_weakness"
                 bias = "trend_follow_short"
                 strength = (50 - rsi) / 50
-                interpretation = {
-                    "headline": "Abwärtsdruck bestätigt",
-                    "meaning": "Der RSI bestätigt einen schwachen Markt.",
-                    "chance": "Weitere Abgaben möglich.",
-                    "risk": "Plötzliche Gegenbewegungen möglich.",
-                    "typical_action": "Short-orientiert oder abwarten"
-                }
+                interpretation = _interp(
+                    "RSI: Abwärtsdruck bestätigt",
+                    "Der RSI bleibt im schwachen Bereich. Das spricht für anhaltenden Druck. "
+                    "Gegenbewegungen sind möglich, aber der Grundton ist aktuell eher negativ.",
+                    status="bearish_weakness",
+                    level="warning"
+                )
 
             else:
                 state = "neutral"
                 bias = "none"
-                strength = 0.0
-                interpretation = {
-                    "headline": "Neutral",
-                    "meaning": "Der RSI zeigt aktuell keine klare Richtung.",
-                    "chance": "Ausbruch aus der Range möglich.",
-                    "risk": "Fehlsignale bei Seitwärtsmarkt.",
-                    "typical_action": "Bestätigung durch andere Indikatoren abwarten"
-                }
+                strength = 0.0     
+                interpretation = _interp(
+                    "RSI: Neutral",
+                    "Der RSI ist im mittleren Bereich. Das bedeutet: aktuell keine klare Übertreibung nach oben oder unten. "
+                    "Oft hilft dann der Blick auf Trend/Momentum (z.B. MA, MACD).",
+                    status="neutral",
+                    level="caption"
+                )
 
         return {
             "value": round(rsi, 2),
@@ -175,6 +187,7 @@ class RSIAnalysis:
         self.overbought_prozent = result["overbought_pct"]
         return result
 
+    
     @staticmethod
     def _empty_result(reason: str) -> dict:
         return {
@@ -183,17 +196,8 @@ class RSIAnalysis:
             "state": "invalid",
             "bias": "none",
             "strength": 0.0,
-            "interpretation": reason
+            "interpretation": _interp("RSI: nicht verfügbar", reason, status="invalid", level="caption")
         }
-    
-    """
-    rsi_analyser = RSIAnalysis()
-    rsi_result = rsi_analyser.analyse(data)
-
-    st.metric("RSI", rsi_result["value"])
-    st.write(rsi_result["interpretation"])
-    st.progress(rsi_result["strength"])
-    """
 
 class MACDAnalysis:
     """
@@ -212,289 +216,94 @@ class MACDAnalysis:
         self.min_hist_strength = min_hist_strength
 
     def analyse(self, data: pd.DataFrame) -> dict:
-        required = {"MACD", "MACD_Signal", "MACD_Hist"}
-        if not required.issubset(data.columns) or len(data) < 3:
-            return self._empty_result("MACD-Daten fehlen")
+    required = {"MACD", "MACD_Signal", "MACD_Hist"}
+    if not required.issubset(data.columns) or len(data) < 3:
+        return self._empty_result("MACD-Daten fehlen")
 
-        macd = float(data["MACD"].iloc[-1])
-        signal = float(data["MACD_Signal"].iloc[-1])
-        hist = float(data["MACD_Hist"].iloc[-1])
-        
-        prev_hist = float(data["MACD_Hist"].iloc[-2])
-        prev_macd = float(data["MACD"].iloc[-2])
+    macd = float(data["MACD"].iloc[-1])
+    signal = float(data["MACD_Signal"].iloc[-1])
+    hist = float(data["MACD_Hist"].iloc[-1])
 
-        # -------------------------
-        # Grundregime (Trendrichtung)
-        # -------------------------
-        if macd > signal:
-            regime = "bullish"
-        elif macd < signal:
-            regime = "bearish"
-        else:
-            regime = "neutral"
+    prev_hist = float(data["MACD_Hist"].iloc[-2])
+    hist_trend = hist - prev_hist
 
-        # -------------------------
-        # Momentum-Bewertung
-        # -------------------------
-        hist_trend = hist - prev_hist
-        macd_trend = macd - prev_macd
+    # Kontext-Regime (optional, nur Einordnung)
+    if macd > signal:
+        regime = "bullish"
+    elif macd < signal:
+        regime = "bearish"
+    else:
+        regime = "neutral"
 
-        # -------------------------
-        # Zustände
-        # -------------------------
-        if regime == "bullish":
-            if hist > self.min_hist_strength and hist_trend > 0:
-                state = "bullish_expansion"
-                bias = "trend_follow_long"
-                strength = min(1.0, abs(hist) * 5)
-                interpretation = {
-                    "headline": "Aufwärtstrend beschleunigt sich",
-                    "meaning": "Der Markt befindet sich in einem Aufwärtstrend und das Momentum nimmt weiter zu.",
-                    "chance": "Trendfortsetzung mit steigender Dynamik wahrscheinlich.",
-                    "risk": "Späte Einstiege können zu Rücksetzern führen.",
-                    "typical_action": "Trendfolge – Rücksetzer für Einstieg abwarten"
-                }
+    # Histogramm-Status (DAS ist der Fokus)
+    if hist < 0 and hist_trend > 0:
+        state = "neg_rising"
+        interp = _interp(
+            "MACD: Abwärtsdruck lässt nach",
+            "Das MACD‑Histogramm ist noch negativ, wird aber weniger negativ. "
+            "Der Verkaufsdruck lässt nach – das ist oft ein frühes Zeichen für Stabilisierung.",
+            status=state,
+            level="info"
+        )
+    elif hist < 0:
+        state = "neg_falling"
+        interp = _interp(
+            "MACD: Negatives Momentum",
+            "Das MACD‑Histogramm ist negativ. Das bedeutet: der Markt hat aktuell eher Abwärtsmomentum. "
+            "Solange das so bleibt, ist Vorsicht bei Long‑Ideen sinnvoll.",
+            status=state,
+            level="warning"
+        )
+    elif hist > 0 and hist_trend >= 0:
+        state = "pos_rising"
+        interp = _interp(
+            "MACD: Positives Momentum",
+            "Das MACD‑Histogramm ist positiv und steigt. Das spricht für Aufwärtsmomentum.",
+            status=state,
+            level="info"
+        )
+    elif hist > 0:
+        state = "pos_falling"
+        interp = _interp(
+            "MACD: Momentum schwächt ab",
+            "Das Histogramm ist noch positiv, nimmt aber ab. Das kann auf eine Pause/Konsolidierung hindeuten.",
+            status=state,
+            level="caption"
+        )
+    else:
+        state = "neutral"
+        interp = _interp(
+            "MACD: Neutral",
+            "Das Momentum ist aktuell ausgeglichen.",
+            status=state,
+            level="caption"
+        )
 
-            elif hist_trend < 0:
-                state = "bullish_weakening"
-                bias = "caution_long"
-                strength = min(1.0, abs(hist_trend) * 3)
-                interpretation = {
-                    "headline": "Aufwärtstrend verliert Momentum",
-                    "meaning": "Der übergeordnete Trend ist positiv, aber die Dynamik lässt nach.",
-                    "chance": "Seitwärtsphase oder kurze Konsolidierung möglich.",
-                    "risk": "Trend kann kippen, wenn Momentum weiter abnimmt.",
-                    "typical_action": "Long-Positionen absichern oder Teilgewinne mitnehmen"
-                }
+    strength = min(1.0, abs(hist) * 5)
 
-            else:
-                state = "bullish_neutral"
-                bias = "trend_follow_long"
-                strength = 0.2
-                interpretation = {
-                    "headline": "Stabiler Aufwärtstrend",
-                    "meaning": "Der Markt steigt, aber ohne zusätzliche Beschleunigung.",
-                    "chance": "Solide Trendfortsetzung möglich.",
-                    "risk": "Fehlende Dynamik kann zu Seitwärtsbewegung führen.",
-                    "typical_action": "Trend halten – auf Momentum-Zunahme achten"
-                }
+    return {
+        "macd": round(macd, 4),
+        "signal": round(signal, 4),
+        "hist": round(hist, 4),
+        "regime": regime,
+        "state": state,
+        "strength": round(float(strength), 2),
+        "interpretation": interp
+    }
 
-        elif regime == "bearish":
-            if hist < -self.min_hist_strength and hist_trend < 0:
-                state = "bearish_expansion"
-                bias = "trend_follow_short"
-                strength = min(1.0, abs(hist) * 5)
-                interpretation = {
-                    "headline": "Abwärtstrend verstärkt sich",
-                    "meaning": "Der Markt befindet sich in einem klaren Abwärtstrend mit zunehmendem Verkaufsdruck.",
-                    "chance": "Weitere Kursverluste wahrscheinlich.",
-                    "risk": "Technische Gegenbewegungen können abrupt auftreten.",
-                    "typical_action": "Short-Trades bevorzugen oder Longs meiden"
-                }
-
-            elif hist_trend > 0:
-                state = "bearish_weakening"
-                bias = "caution_short"
-                strength = min(1.0, abs(hist_trend) * 3)
-                interpretation = {
-                    "headline": "Abwärtsdruck lässt nach",
-                    "meaning": "Der Abwärtstrend verliert an Dynamik.",
-                    "chance": "Erholung oder Seitwärtsphase möglich.",
-                    "risk": "Trend kann nach kurzer Pause weiterlaufen.",
-                    "typical_action": "Short-Gewinne sichern – Bestätigung abwarten"
-                }
-
-            else:
-                state = "bearish_neutral"
-                bias = "trend_follow_short"
-                strength = 0.2
-                interpretation = {
-                    "headline": "Stabiler Abwärtstrend",
-                    "meaning": "Der Markt fällt gleichmäßig ohne zusätzliche Beschleunigung.",
-                    "chance": "Weiterer Abwärtsverlauf wahrscheinlich.",
-                    "risk": "Plötzliche Gegenbewegungen möglich.",
-                    "typical_action": "Short-orientiert bleiben, Stops beachten"
-                }
-
-        else:
-            state = "transition"
-            bias = "wait"
-            strength = 0.0
-            interpretation = {
-                "headline": "Trendwechselphase",
-                "meaning": "Der MACD zeigt aktuell keine klare Trendrichtung.",
-                "chance": "Neuer Trend kann sich entwickeln.",
-                "risk": "Erhöhte Fehlsignale in Übergangsphasen.",
-                "typical_action": "Abwarten und andere Indikatoren nutzen"
-            }
-
-        return {
-            "macd": round(macd, 4),
-            "signal": round(signal, 4),
-            "histogram": round(hist, 4),
-            "histogram_trend": round(hist_trend, 4),
-            "regime": regime,
-            "state": state,
-            "bias": bias,
-            "strength": round(float(strength), 2),
-            "interpretation": interpretation
-        }
-
-
+    
     @staticmethod
     def _empty_result(reason: str) -> dict:
         return {
             "macd": None,
             "signal": None,
-            "histogram": None,
+            "hist": None,
             "regime": "unknown",
             "state": "invalid",
-            "bias": "none",
             "strength": 0.0,
-            "interpretation": reason
+            "interpretation": _interp("MACD: nicht verfügbar", reason, status="invalid", level="caption")
         }
 
-class MACDAnalysis_Confirmations:
-    """
-    Erweiterte MACD-Analyse für Signal-Confirmations
-    ------------------------------------------------
-    Erkennt:
-    - Trendrichtung (bullish / bearish / neutral)
-    - Momentum & Stärke
-    - Übergangsphasen (Weakening / Expansion)
-    - Flattening / Plateau für frühe Wendepunkte
-    """
-
-    def __init__(self, min_hist_strength: float = 0.05, flatten_lookback: int = 5):
-        self.min_hist_strength = min_hist_strength
-        self.flatten_lookback = flatten_lookback  # Anzahl der Balken zur Flatten-Erkennung
-
-    def analyse(self, data: pd.DataFrame) -> dict:
-        required = {"MACD", "MACD_Signal", "MACD_Hist"}
-        if not required.issubset(data.columns) or len(data) < self.flatten_lookback + 1:
-            return self._empty_result("MACD-Daten fehlen")
-
-        macd = float(data["MACD"].iloc[-1])
-        signal = float(data["MACD_Signal"].iloc[-1])
-        hist = float(data["MACD_Hist"].iloc[-1])
-
-        prev_hist = float(data["MACD_Hist"].iloc[-2])
-        prev_macd = float(data["MACD"].iloc[-2])
-
-        # -------------------------
-        # Grundregime (Trendrichtung)
-        # -------------------------
-        if macd > signal:
-            regime = "bullish"
-        elif macd < signal:
-            regime = "bearish"
-        else:
-            regime = "neutral"
-
-        # -------------------------
-        # Momentum-Bewertung
-        # -------------------------
-        hist_trend = hist - prev_hist
-        macd_trend = macd - prev_macd
-
-        # -------------------------
-        # Flattening / Plateau Detection
-        # -------------------------
-        recent_hist = data["MACD_Hist"].iloc[-self.flatten_lookback:]
-        delta_hist = recent_hist.diff().abs().mean()  # mittlere absolute Differenz
-
-        if abs(hist) < self.min_hist_strength and delta_hist < self.min_hist_strength / 2:
-            flattening_signal = True
-        else:
-            flattening_signal = False
-
-        # -------------------------
-        # Zustände
-        # -------------------------
-        if regime == "bullish":
-            if hist > self.min_hist_strength and hist_trend > 0:
-                state = "bullish_expansion"
-                bias = "trend_follow_long"
-                strength = min(1.0, abs(hist) * 5)
-                trend_signal = +1
-            elif hist_trend < 0:
-                state = "bullish_weakening"
-                bias = "caution_long"
-                strength = min(1.0, abs(hist_trend) * 3)
-                trend_signal = +0.5
-            else:
-                state = "bullish_neutral"
-                bias = "trend_follow_long"
-                strength = 0.2
-                trend_signal = +0.3
-
-        elif regime == "bearish":
-            if hist < -self.min_hist_strength and hist_trend < 0:
-                state = "bearish_expansion"
-                bias = "trend_follow_short"
-                strength = min(1.0, abs(hist) * 5)
-                trend_signal = -1
-            elif hist_trend > 0:
-                state = "bearish_weakening"
-                bias = "caution_short"
-                strength = min(1.0, abs(hist_trend) * 3)
-                trend_signal = -0.5
-            else:
-                state = "bearish_neutral"
-                bias = "trend_follow_short"
-                strength = 0.2
-                trend_signal = -0.3
-
-        else:
-            state = "transition"
-            bias = "wait"
-            strength = 0.0
-            trend_signal = 0
-
-        # -------------------------
-        # Interpretation & Chancen/Risiken
-        # -------------------------
-        interpretation = {
-            "headline": f"{state} erkannt",
-            "meaning": "MACD-Analyse liefert Trendrichtung und Momentum.",
-            "chance": "Trendfortsetzung oder Trendwende möglich.",
-            "risk": "Falsche Signale bei plötzlicher Volatilität.",
-            "typical_action": "Mit Bestätigung durch RSI, ADX, Bollinger, Stochastics handeln"
-        }
-
-        if flattening_signal:
-            interpretation["headline"] += " + Flattening"
-            interpretation["chance"] += " Frühzeitige Wendepunkte erkennbar."
-            interpretation["risk"] += " Signal kann noch fehlsignalisieren."
-            interpretation["typical_action"] += " Frühwarnung beachten, weitere Indikatoren prüfen."
-
-        return {
-            "macd": round(macd, 4),
-            "signal": round(signal, 4),
-            "histogram": round(hist, 4),
-            "regime": regime,
-            "state": state,
-            "bias": bias,
-            "strength": round(float(strength), 2),
-            "trend_signal": trend_signal,
-            "flattening_signal": flattening_signal,
-            "interpretation": interpretation
-        }
-
-    @staticmethod
-    def _empty_result(reason: str) -> dict:
-        return {
-            "macd": None,
-            "signal": None,
-            "histogram": None,
-            "regime": "unknown",
-            "state": "invalid",
-            "bias": "none",
-            "strength": 0.0,
-            "trend_signal": 0,
-            "flattening_signal": False,
-            "interpretation": reason
-        }
 
 class ADXAnalysis:
     """
@@ -546,73 +355,51 @@ class ADXAnalysis:
             state = "no_trend"
             bias = "mean_reversion"
             strength = 0.0
-            summary = "Seitwärtsmarkt"
-            interpretation_short = "Kein klarer Trend – Trendstrategien meiden"
-            interpretation_long = (
-                "Der ADX liegt unterhalb der Trend-Schwelle. "
-                "Der Markt bewegt sich überwiegend seitwärts. "
-                "Trendfolgestrategien sind in solchen Phasen meist ineffektiv, "
-                "während kurzfristige Gegenbewegungen häufiger auftreten."
+            interp = _interp(
+                "ADX: Seitwärtsmarkt (schwacher Trend)",
+                "Der ADX ist niedrig. Das bedeutet: es gibt aktuell keinen starken Trend – der Markt ist eher seitwärts. "
+                "In solchen Phasen sind Trendstrategien oft weniger zuverlässig.",
+                status="range",
+                level="info"
             )
-            chance = "Kurzfristige Gegenbewegungen bieten Trading-Gelegenheiten."
-            risk = "Trendfolgestrategien sind ineffektiv, Risiko von Fehlsignalen."
-            action_hint = "Abwarten / Range-Strategien"
         elif self.weak_trend <= adx < self.strong_trend:
             regime = "emerging_trend"
             state = f"{direction}_emerging"
             bias = "wait_for_confirmation"
-            strength = (adx - self.weak_trend) / (self.strong_trend - self.weak_trend)
-            summary = "Trend im Aufbau"
-            interpretation_short = "Möglicher Trend – noch unbestätigt"
-            interpretation_long = (
-                "Der ADX steigt, hat aber noch keinen stabilen Trendbereich erreicht. "
-                "Das deutet auf einen entstehenden Trend hin, der sich jedoch noch "
-                "als Fehlsignal entpuppen kann."
+            interp = _interp(
+                "ADX: Seitwärtsmarkt (schwacher Trend bildet sich)",
+                "Der ADX ist niedrig. Das bedeutet: es gibt aktuell keinen starken Trend – der Markt ist eher seitwärts, jedoch zeigen sich Ansätze für einen Trend. "
+                "In solchen Phasen sind Trendstrategien oft weniger zuverlässig.",
+                status="range",
+                level="caption"
             )
-            chance = "Trend entsteht, mögliche frühe Einstiege."
-            risk = "Trend ist noch unsicher, Fehlsignale möglich."
-            action_hint = "Beobachten"
-
         elif self.strong_trend <= adx < self.extreme_trend:
             regime = "strong_trend"
             state = f"{direction}_trend"
             bias = f"trend_follow_{direction}"
             strength = min(1.0, adx / self.extreme_trend)
-            summary = "Starker Trend"
-            interpretation_short = "Stabiler Trend – gute Trendfolge"
-            interpretation_long = (
-                "Der ADX signalisiert einen klaren und stabilen Trend. "
-                "In solchen Marktphasen haben Trendfolgestrategien eine erhöhte "
-                "Erfolgswahrscheinlichkeit, da sich Bewegungen oft fortsetzen."
+            interp = _interp(
+                "ADX: Seitwärtsmarkt (starker Trend)",
+                "Der ADX ist hoch. Das bedeutet: es gibt aktuell einen starken Trend.",
+                status="range",
+                level="warning"
             )
-            chance = "Klare Trendrichtung, Trendfolgestrategien erfolgversprechend."
-            risk = "Markt kann plötzliche Gegenbewegungen zeigen."
-            action_hint = "Trend handeln"
 
         else:
             regime = "extreme_trend"
             state = f"{direction}_exhaustion"
             bias = "risk_of_reversal"
             strength = 1.0
-            summary = "Überdehnter Trend"
-            interpretation_short = "Sehr starker Trend – Rücksetzer möglich"
-            interpretation_long = (
-                "Der ADX liegt auf extrem hohem Niveau. "
-                "Solche Phasen gehen häufig mit einer Überdehnung einher. "
-                "Neueinstiege bergen ein erhöhtes Risiko für plötzliche Rücksetzer "
-                "oder Trendwenden."
+            interp = _interp(
+                "ADX: Seitwärtsmarkt (extremer Trend)",
+                "Der ADX ist sehr hoch. Das bedeutet: es gibt aktuell ein extremer Trend.",
+                status="range",
+                level="warning"
             )
-            chance = "Trend hat viel Kraft, Gewinnmitnahmen können sinnvoll sein."
-            risk = "Hohe Gefahr von Trendwende oder plötzlichen Rücksetzern."
-            action_hint = "Gewinne sichern / Vorsicht"
-
         # -------------------------
         # Trendbeschleunigung
         # -------------------------
-        if adx_trend > 0:
-            trend_acceleration = " Trend nimmt an Stärke zu"
-        elif adx_trend < 0:
-            trend_acceleration = " Trend verliert an Stärke"
+        trend_acceleration = "steigend" if adx_trend > 0 else ("fallend" if adx_trend < 0 else "gleichbleibend")
 
         return {
             "adx": round(adx, 2),
@@ -622,13 +409,8 @@ class ADXAnalysis:
             "state": state,
             "bias": bias,
             "strength": round(float(strength), 2),
-            "summary": summary,
-            "interpretation_short": interpretation_short,
             "trend_acceleration": trend_acceleration,
-            "interpretation_long": interpretation_long,
-            "chance": chance,
-            "risk": risk,
-            "action_hint": action_hint
+            "interpretation": interp
         }
 
     @staticmethod
@@ -721,15 +503,63 @@ class MAAnalysis:
             atr = None
 
         # -------------------------
-        # Interpretation
+        # Interpretation (einsteigerfreundlich, neutral – KEINE Handlungsempfehlung)
         # -------------------------
-        interpretation = {
-            "headline": "MA-Analyse",
-            "meaning": f"MA{self.short_window} vs. MA{self.long_window} zeigt {ma_trend} Trend.",
-            "chance": "Trendrichtung kann für Entries genutzt werden.",
-            "risk": "Kurzfristige Crossovers können Fehlsignale sein.",
-            "typical_action": "MA-Trend als Bestätigung oder Filter nutzen"
-        }
+        
+        # Kontext: wo liegt der Kurs relativ zum MA50?
+        close_last = float(close.iloc[-1])
+        above_ma50 = close_last >= float(ma50)
+        
+        # 1) Crossovers haben Priorität (weil "neu")
+        if ma_cross == "bullish_cross":
+            interpretation = _interp(
+                f"MA{self.short_window}/MA{self.long_window}: Bullisches Crossover",
+                f"Der kurzfristige Durchschnitt (MA{self.short_window}) ist gerade über den längerfristigen "
+                f"(MA{self.long_window}) gestiegen. Das deutet oft darauf hin, dass sich der Trend nach oben drehen könnte. "
+                f"{'Der Kurs liegt bereits über dem MA50, das passt zur positiven Tendenz.' if above_ma50 else 'Der Kurs liegt noch unter dem MA50 – das kann bedeuten, dass die Trendwende noch Bestätigung braucht.'}",
+                status="bullish_cross",
+                level="info"
+            )
+        
+        elif ma_cross == "bearish_cross":
+            interpretation = _interp(
+                f"MA{self.short_window}/MA{self.long_window}: Bärisches Crossover",
+                f"Der kurzfristige Durchschnitt (MA{self.short_window}) ist gerade unter den längerfristigen "
+                f"(MA{self.long_window}) gefallen. Das deutet oft darauf hin, dass der Markt schwächer wird. "
+                f"{'Der Kurs liegt zusätzlich unter dem MA50 – das passt zur schwächeren Tendenz.' if not above_ma50 else 'Der Kurs liegt noch über dem MA50 – das kann bedeuten, dass der Rückgang noch nicht vollständig bestätigt ist.'}",
+                status="bearish_cross",
+                level="warning"
+            )
+        
+        # 2) Kein Crossover: Trend-Bild aus MA10 vs MA50 + Kurslage
+        else:
+            if ma_trend == "bullish" and above_ma50:
+                interpretation = _interp(
+                    f"MA{self.short_window}/MA{self.long_window}: Aufwärtstendenz",
+                    f"MA{self.short_window} liegt über MA{self.long_window} und der Kurs liegt über dem MA50. "
+                    f"Das spricht für eine eher positive Grundtendenz. Trotzdem kann es zwischendurch normale Rücksetzer geben.",
+                    status="bullish",
+                    level="info"
+                )
+        
+            elif ma_trend == "bearish" and not above_ma50:
+                interpretation = _interp(
+                    f"MA{self.short_window}/MA{self.long_window}: Abwärtstendenz",
+                    f"MA{self.short_window} liegt unter MA{self.long_window} und der Kurs liegt unter dem MA50. "
+                    f"Das spricht für eine eher schwache Grundtendenz. In solchen Phasen sind Gegenbewegungen möglich, "
+                    f"aber das Umfeld bleibt eher vorsichtig.",
+                    status="bearish",
+                    level="warning"
+                )
+        
+            else:
+                interpretation = _interp(
+                    f"MA{self.short_window}/MA{self.long_window}: Gemischtes Bild",
+                    f"Die gleitenden Durchschnitte zeigen aktuell kein klares Trendbild (z. B. MA{self.short_window} vs. MA{self.long_window} oder Kurslage gemischt). "
+                    f"In solchen Phasen hilft oft der Blick auf Momentum/Volatilität (z. B. MACD, Bollinger, ADX).",
+                    status="neutral",
+                    level="caption"
+                )
 
         return {
             "ma_short": round(ma10, 4),
@@ -752,7 +582,7 @@ class MAAnalysis:
             "distance": 0.0,
             "strength": 0.0,
             "atr": None,
-            "interpretation": reason
+            "interpretation": _interp("MA-Analyse: nicht verfügbar", reason, status="invalid", level="caption
         }
     
 class BollingerAnalysis:
@@ -770,67 +600,53 @@ class BollingerAnalysis:
             state = "Below_Lower"
             score = +1
             summary = "Preis am unteren Band"
-            interpretation_short = "Preis liegt am unteren Band"
-            interpretation_long = (
-                "Der Kurs notiert am unteren Bollinger-Band, was auf eine starke Unterbewertung "
-                "und erhöhte Volatilität hinweist. Dies kann eine attraktive Einstiegszone für Long-Positionen darstellen, "
-                "jedoch besteht das Risiko weiterer Abwärtsbewegungen."
-            )
-            action_hint = "Mögliches Kaufsignal – Risiko beachten"
-            chance = "Attraktiver Einstiegszeitpunkt bei potenzieller Bodenbildung."
-            risk = "Markt könnte weiter fallen, trotz Überverkauftheit."
+            interp = _interp(
+                    "Bollinger: nahe/unter unterem Band",
+                    "Der Kurs liegt am unteren Bollinger‑Band. Das bedeutet: der Preis ist im Vergleich zur letzten Zeit eher niedrig. "
+                    "Oft sieht man hier Gegenbewegungen – aber in starken Abwärtstrends kann es auch weiter fallen.",
+                    status="below_lower",
+                    level="info"
+                )
 
         elif close < mid:
             state = "Lower_Half"
             score = +0.5
             state = "Lower_Half"
-            score = +0.5
-            summary = "Preis in der unteren Hälfte"
-            interpretation_short = "Preis in der unteren Hälfte"
-            interpretation_long = (
-                "Der Kurs bewegt sich in der unteren Hälfte der Bollinger-Bänder, was auf eine potenziell "
-                "günstige Long-Position hinweist. Die Volatilität ist moderat, und der Markt zeigt keine extremen Bewegungen."
-            )
-            action_hint = "Long-Position möglich, Trend beobachten"
-            chance = "Preis in günstiger Zone, moderates Aufwärtspotenzial."
-            risk = "Trend könnte seitwärts oder schwach bleiben."
+            score = +0.5         
+            interp = _interp(
+                    "Bollinger: untere Hälfte",
+                    "Der Kurs liegt in der unteren Hälfte der Bänder. Das ist oft eine 'günstigere' Zone als nahe dem oberen Band – "
+                    "aber ohne Garantie. Trend und Momentum geben zusätzlichen Kontext.",
+                    status="lower_half",
+                    level="caption"
+                )
 
         elif close > upper:
             state = "Above_Upper"
             score = -1
-            summary = "Preis über dem oberen Band"
-            interpretation_short = "Preis über dem oberen Band"
-            interpretation_long = (
-                "Der Kurs notiert oberhalb des oberen Bollinger-Bandes und gilt als überdehnt. "
-                "Dies weist auf eine mögliche technische Gegenreaktion hin, und es besteht ein erhöhtes Risiko für Rücksetzer."
-            )
-            action_hint = "Vorsicht bei Neueinstiegen – Gewinnmitnahmen erwägen"
-            chance = "Starke Aufwärtsdynamik vorhanden."
-            risk = "Hohe Wahrscheinlichkeit für technische Gegenreaktion."
+            interp = _interp(
+                    "Bollinger: nahe/über oberem Band",
+                    "Der Kurs liegt am oberen Bollinger‑Band. Das bedeutet: der Preis ist aktuell eher hoch/überdehnt. "
+                    "Kurzfristige Pausen oder Rücksetzer sind möglich.",
+                    status="above_upper",
+                    level="warning"
+                )
 
         else:
             state = "Neutral"
-            score = 0
-            summary = "Preis nahe Mittelband"
-            interpretation_short = "Preis nahe Mittelband"
-            interpretation_long = (
-                "Der Kurs befindet sich nahe dem mittleren Bollinger-Band, was auf eine stabile Marktphase "
-                "ohne ausgeprägte Über- oder Unterbewertung hindeutet."
-            )
-            action_hint = "Abwarten oder Seitwärtsstrategie nutzen"
-            chance = "Markt zeigt Stabilität ohne Extreme."
-            risk = "Keine klaren Signale, mögliche Seitwärtsbewegung."
+            score = 0        
+            interp = _interp(
+                    "Bollinger: neutral",
+                    "Der Kurs liegt nahe dem Mittelband. Das spricht für eine eher stabile Phase ohne klare Übertreibung.",
+                    status="neutral",
+                    level="caption"
+                )
 
         return {
             "state": state,
             "score": score,
             "bandwidth": round(width, 3),
-            "interpretation_short": interpretation_short,
-            "summary": summary,
-            "interpretation_long": interpretation_long,
-            "action_hint": action_hint,
-            "chance": chance,
-            "risk": risk
+            "interpretation": interp
         }
 
 class StochasticAnalysis:
@@ -846,81 +662,62 @@ class StochasticAnalysis:
 
         if k < 20 and bullish_cross:
             regime = "Oversold_Reversal"
-            score = +1
-            summary = "Überverkauftes bullishes Signal"
-            interpretation_short = "Überverkauft und günstiges Kaufsignal"
-            interpretation_long = (
-                "Der Stochastic-Oszillator zeigt eine Überverkauft-Situation zusammen mit "
-                "einem bullischen Kreuz (K % über D %). Das kann eine gute Gelegenheit für eine technische "
-                "Gegenbewegung oder Trendwende sein."
-            )
-            action_hint = "Long-Position erwägen, Stop-Loss setzen"
-            chance = "Hohe Wahrscheinlichkeit für Erholung oder Trendwende."
-            risk = "Signal kann in starkem Abwärtstrend versagen, weitere Bestätigung nötig."
+            score = +1 
+            interp = _interp(
+                    "Stochastics: Überverkauft + bullisches Kreuz",
+                    "Der Stochastics zeigt eine sehr schwache Phase und ein bullisches Kreuz. "
+                    "Das ist oft ein kurzfristiger Timing‑Hinweis für eine Gegenbewegung.",
+                    status="oversold_reversal",
+                    level="info"
+                )
 
         elif k > 80 and bearish_cross:
             regime = "Overbought_Reversal"
-            score = -1
-            summary = "Überkauftes bearishes Signal"
-            interpretation_short = "Überkauft mit Verkaufsignal"
-            interpretation_long = (
-                "Der Indikator signalisiert eine Überkauft-Situation mit einem bearischen Kreuz. "
-                "Das weist auf eine mögliche Trendwende nach unten oder einen Rücksetzer hin."
-            )
-            action_hint = "Gewinne sichern, Short-Position prüfen"
-            chance = "Potenzial für kurzfristige Korrektur oder Trendwende."
-            risk = "Signal könnte ein Fehlausbruch sein, Trend könnte anhalten."
+            score = -1            
+            interp = _interp(
+                    "Stochastics: Überkauft + bärisches Kreuz",
+                    "Der Stochastics zeigt eine sehr starke Phase und ein bärisches Kreuz. "
+                    "Das kann auf eine kurzfristige Pause oder einen Rücksetzer hinweisen.",
+                    status="overbought_reversal",
+                    level="warning"
+                )
 
         elif k > d and k < 80:
             regime = "Bullish_Momentum"
-            score = +0.5
-            summary = "Positives Momentum"
-            interpretation_short = "Bullishes Momentum, aber nicht überkauft"
-            interpretation_long = (
-                "Der Stochastic zeigt, dass das Momentum auf der Long-Seite liegt, "
-                "jedoch ohne extreme Überkauft-Signale. Eine moderate Aufwärtsbewegung ist wahrscheinlich."
-            )
-            action_hint = "Positionen halten oder ausbauen"
-            chance = "Fortsetzung des Aufwärtstrends mit moderatem Risiko."
-            risk = "Markt kann kurzfristig konsolidieren oder korrigieren."
+            score = +0.5            
+            interp = _interp(
+                    "Stochastics: positives kurzfristiges Momentum",
+                    "Kurzfristig liegt das Momentum eher auf der positiven Seite – ohne extremes Überkauft‑Signal.",
+                    status="bullish_momentum",
+                    level="caption"
+                )
 
         elif k < d and k > 20:
             regime = "Bearish_Momentum"
-            score = -0.5
-            summary = "Negatives Momentum"
-            interpretation_short = "Bearishes Momentum ohne Überverkauft"
-            interpretation_long = (
-                "Das Momentum liegt auf der Short-Seite, aber ohne eine ausgeprägte Überverkauft-Situation. "
-                "Der Trend könnte sich abschwächen oder eine Korrektur einleiten."
-            )
-            action_hint = "Vorsicht walten lassen, Stopp beachten"
-            chance = "Möglichkeit für Trendwende oder kurzfristige Erholung."
-            risk = "Abschwächung könnte nur eine Pause sein, Abwärtstrend bleibt intakt."
+            score = -0.5           
+            interp = _interp(
+                    "Stochastics: negatives kurzfristiges Momentum",
+                    "Kurzfristig wirkt das Momentum eher schwach – ohne extremes Überverkauft‑Signal.",
+                    status="bearish_momentum",
+                    level="caption"
+                )
 
         else:
             regime = "Neutral"
-            score = 0
-            summary = "Kein klares Timing"
-            interpretation_short = "Neutraler Zustand"
-            interpretation_long = (
-                "Der Stochastic-Indikator liefert derzeit keine klaren Signale für eine Trendwende oder ein "
-                "starkes Momentum. Marktbewegungen sind eher unentschlossen."
-            )
-            action_hint = "Abwarten und Markt beobachten"
-            chance = "Markt könnte sich bald entscheiden, gute Einstiegsgelegenheiten möglich."
-            risk = "Unklare Marktphase birgt Unsicherheit und erhöhtes Risiko."
+            score = 0    
+            interp = _interp(
+                    "Stochastics: neutral",
+                    "Der Stochastics liefert aktuell kein klares Timing‑Signal.",
+                    status="neutral",
+                    level="caption"
+                )
 
         return {
             "regime": regime,
             "score": score,
             "k": round(k, 2),
             "d": round(d, 2),
-            "summary": summary,
-            "interpretation_short": interpretation_short,
-            "interpretation_long": interpretation_long,
-            "action_hint": action_hint,
-            "chance": chance,
-            "risk": risk
+            "interpretation": interp
         }
 
 class ATRQualityAnalysis:
