@@ -15,6 +15,7 @@ from trading_v2.rule_engine import RuleEngineV2
 from trading_v2.features import build_features
 from trading_v2.telemetry import write_daily_log
 from trading_v2.wfo_optimizer import (optimize_symbol_wfo, write_learned, write_report)
+from trading_v2.config_loader import load_global
 
 from SwingtradingSignale import(
     RSIAnalysis,
@@ -263,7 +264,6 @@ def aktienseite():
     )
     
     # global verfügbar machen
-    from config_loader import load_global
     global_cfg = load_global()
     global_cfg["active_profile"] = profile
     thresholds = apply_profile(thresholds, strategie)
