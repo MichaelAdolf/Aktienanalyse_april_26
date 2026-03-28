@@ -908,7 +908,7 @@ class MarketRegimeAnalysis:
         # -----------------------------
         elif adx["regime"] == "strong_trend":
             market_regime = "trend_market"
-            trade_bias = macd["bias"]
+            trade_bias = "wait_for_trend_to_build_up"
             confidence = 0.75
 
             summary = "Starker Trend"
