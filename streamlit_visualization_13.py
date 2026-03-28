@@ -501,8 +501,6 @@ def aktienseite():
             with st.container(border=True):
                 st.subheader("ADX Analyse")
                 indikatoren_diagram.plot_adx(data, symbol)
-                adx_text = (f"Regime: {adx_result['regime']}\n" f"State: {adx_result['state']}\n" f"Bias: {adx_result['bias']}")
-                st.text_area("ADX Interpretation", adx_text, key=f"adx_interpretation_{name}")
                 st.markdown(f"### ADX Analyse – {macd_interp.get('headline', '')}")
                 render_interp(adx_result["interpretation"])
                 st.progress(int(round(adx_result["strength"] * 100)))
