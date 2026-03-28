@@ -494,7 +494,6 @@ def aktienseite():
                 # Stochastic Oscillator Chart
                 st.subheader("Stochastics Analyse")
                 indikatoren_diagram.plot_stoch(data, symbol)
-                st.markdown(f"### Stochastics Analyse – {stoch_interp.get('headline', '')}")
                 render_interp(stoch_interp)
         
         # ---------------------------------------------------------
