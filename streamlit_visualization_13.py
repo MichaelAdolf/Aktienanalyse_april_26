@@ -420,7 +420,6 @@ def aktienseite():
                 st.markdown(
                     f"- **RSI:** {rsi_interp['meaning']}\n"
                     f"- **MACD:** {macd_interp['meaning']}\n"
-                    f"- **Stochastics:** {stochastic_result['summary']}\n"
                     f"- **ADX:** {adx_result['trend_acceleration']}"
                     )
 
