@@ -216,82 +216,81 @@ class MACDAnalysis:
         self.min_hist_strength = min_hist_strength
 
     def analyse(self, data: pd.DataFrame) -> dict:
-    required = {"MACD", "MACD_Signal", "MACD_Hist"}
-    if not required.issubset(data.columns) or len(data) < 3:
-        return self._empty_result("MACD-Daten fehlen")
-
-    macd = float(data["MACD"].iloc[-1])
-    signal = float(data["MACD_Signal"].iloc[-1])
-    hist = float(data["MACD_Hist"].iloc[-1])
-
-    prev_hist = float(data["MACD_Hist"].iloc[-2])
-    hist_trend = hist - prev_hist
-
-    # Kontext-Regime (optional, nur Einordnung)
-    if macd > signal:
-        regime = "bullish"
-    elif macd < signal:
-        regime = "bearish"
-    else:
-        regime = "neutral"
-
-    # Histogramm-Status (DAS ist der Fokus)
-    if hist < 0 and hist_trend > 0:
-        state = "neg_rising"
-        interp = _interp(
-            "MACD: Abwärtsdruck lässt nach",
-            "Das MACD‑Histogramm ist noch negativ, wird aber weniger negativ. "
-            "Der Verkaufsdruck lässt nach – das ist oft ein frühes Zeichen für Stabilisierung.",
-            status=state,
-            level="info"
-        )
-    elif hist < 0:
-        state = "neg_falling"
-        interp = _interp(
-            "MACD: Negatives Momentum",
-            "Das MACD‑Histogramm ist negativ. Das bedeutet: der Markt hat aktuell eher Abwärtsmomentum. "
-            "Solange das so bleibt, ist Vorsicht bei Long‑Ideen sinnvoll.",
-            status=state,
-            level="warning"
-        )
-    elif hist > 0 and hist_trend >= 0:
-        state = "pos_rising"
-        interp = _interp(
-            "MACD: Positives Momentum",
-            "Das MACD‑Histogramm ist positiv und steigt. Das spricht für Aufwärtsmomentum.",
-            status=state,
-            level="info"
-        )
-    elif hist > 0:
-        state = "pos_falling"
-        interp = _interp(
-            "MACD: Momentum schwächt ab",
-            "Das Histogramm ist noch positiv, nimmt aber ab. Das kann auf eine Pause/Konsolidierung hindeuten.",
-            status=state,
-            level="caption"
-        )
-    else:
-        state = "neutral"
-        interp = _interp(
-            "MACD: Neutral",
-            "Das Momentum ist aktuell ausgeglichen.",
-            status=state,
-            level="caption"
-        )
-
-    strength = min(1.0, abs(hist) * 5)
-
-    return {
-        "macd": round(macd, 4),
-        "signal": round(signal, 4),
-        "hist": round(hist, 4),
-        "regime": regime,
-        "state": state,
-        "strength": round(float(strength), 2),
-        "interpretation": interp
-    }
-
+        required = {"MACD", "MACD_Signal", "MACD_Hist"}
+        if not required.issubset(data.columns) or len(data) < 3:
+            return self._empty_result("MACD-Daten fehlen")
     
+        macd = float(data["MACD"].iloc[-1])
+        signal = float(data["MACD_Signal"].iloc[-1])
+        hist = float(data["MACD_Hist"].iloc[-1])
+    
+        prev_hist = float(data["MACD_Hist"].iloc[-2])
+        hist_trend = hist - prev_hist
+    
+        # Kontext-Regime (optional, nur Einordnung)
+        if macd > signal:
+            regime = "bullish"
+        elif macd < signal:
+            regime = "bearish"
+        else:
+            regime = "neutral"
+    
+        # Histogramm-Status (DAS ist der Fokus)
+        if hist < 0 and hist_trend > 0:
+            state = "neg_rising"
+            interp = _interp(
+                "MACD: Abwärtsdruck lässt nach",
+                "Das MACD‑Histogramm ist noch negativ, wird aber weniger negativ. "
+                "Der Verkaufsdruck lässt nach – das ist oft ein frühes Zeichen für Stabilisierung.",
+                status=state,
+                level="info"
+            )
+        elif hist < 0:
+            state = "neg_falling"
+            interp = _interp(
+                "MACD: Negatives Momentum",
+                "Das MACD‑Histogramm ist negativ. Das bedeutet: der Markt hat aktuell eher Abwärtsmomentum. "
+                "Solange das so bleibt, ist Vorsicht bei Long‑Ideen sinnvoll.",
+                status=state,
+                level="warning"
+            )
+        elif hist > 0 and hist_trend >= 0:
+            state = "pos_rising"
+            interp = _interp(
+                "MACD: Positives Momentum",
+                "Das MACD‑Histogramm ist positiv und steigt. Das spricht für Aufwärtsmomentum.",
+                status=state,
+                level="info"
+            )
+        elif hist > 0:
+            state = "pos_falling"
+            interp = _interp(
+                "MACD: Momentum schwächt ab",
+                "Das Histogramm ist noch positiv, nimmt aber ab. Das kann auf eine Pause/Konsolidierung hindeuten.",
+                status=state,
+                level="caption"
+            )
+        else:
+            state = "neutral"
+            interp = _interp(
+                "MACD: Neutral",
+                "Das Momentum ist aktuell ausgeglichen.",
+                status=state,
+                level="caption"
+            )
+    
+        strength = min(1.0, abs(hist) * 5)
+    
+        return {
+            "macd": round(macd, 4),
+            "signal": round(signal, 4),
+            "hist": round(hist, 4),
+            "regime": regime,
+            "state": state,
+            "strength": round(float(strength), 2),
+            "interpretation": interp
+        }
+
     @staticmethod
     def _empty_result(reason: str) -> dict:
         return {
