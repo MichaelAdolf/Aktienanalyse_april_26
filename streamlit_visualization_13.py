@@ -457,6 +457,10 @@ def aktienseite():
                 if boll_interp:
                     st.markdown(f"### {boll_interp.get('headline','Bollinger')}")
                     render_interp(boll_interp)
+                # Optional: kleine Faktenbox für Einsteiger (rein informativ)
+                st.caption(
+                    f"Volatilität (Bollinger Bandbreite): {bollinger_result['bandwidth']:.2f}"
+                )
 
         col1, col2 = st.columns([1,1])
         # ---------------------------------------------------------
