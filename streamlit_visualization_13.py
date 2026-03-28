@@ -191,7 +191,7 @@ def aktienseite():
     # ---------------------------------------------------------
     # Sidebar-Parameter laden
     # ---------------------------------------------------------  
-    tage, min_veraenderung, Auswertung_tage, short_window, long_window, signal_window = lade_sidebar_parameter()
+    tage, min_veraenderung, Auswertung_tage = lade_sidebar_parameter()
     use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True)
         
     # ---------------------------------------------------------
@@ -727,34 +727,8 @@ def lade_sidebar_parameter():
         value=61,
         step=1
     )
-
-    # --------------------------------------------------
-    # ⚙️ MACD Parameter
-    # --------------------------------------------------
-    st.sidebar.subheader("⚙️ MACD Parameter")
-
-    short_window = st.sidebar.number_input(
-        "Short EMA Periode",
-        min_value=5,
-        max_value=50,
-        value=12
-    )
-
-    long_window = st.sidebar.number_input(
-        "Long EMA Periode",
-        min_value=10,
-        max_value=100,
-        value=26
-    )
-
-    signal_window = st.sidebar.number_input(
-        "Signal EMA Periode",
-        min_value=5,
-        max_value=30,
-        value=9
-    )
-
-    return tage, min_veraenderung, auswertung_tage, short_window, long_window, signal_window
+    
+    return tage, min_veraenderung, auswertung_tage
 
 def zeige_kaufsignal_analyse(data, Auswertung_tage, min_veraenderung):
     """
