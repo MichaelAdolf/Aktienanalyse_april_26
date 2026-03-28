@@ -31,9 +31,9 @@ class RuleEngineV2:
         labeling = self.global_cfg.get('labeling', {})
         risk = self.global_cfg.get('risk', {})
         entry_window_days = int(params.get('entry_window_days', 4))
-        validation_bonus = float(lifecycle.get('validation_bonus', 15))
-        erosion_penalty = float(lifecycle.get('erosion_penalty', 8))
-        erosion_margin = float(lifecycle.get('erosion_margin', 5))
+        validation_bonus = float(params.get('validation_bonus', 15))
+        erosion_penalty = float(params.get('erosion_penalty', 8))
+        erosion_margin = float(params.get('erosion_margin', 5))
         adx_thr = float(risk.get('adx_thr', 30))
 
         mode = self.policy.mode
