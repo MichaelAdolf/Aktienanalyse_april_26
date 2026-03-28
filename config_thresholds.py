@@ -86,20 +86,53 @@ def _merge(base: Dict[str, Any], override: Dict[str, Any]) -> None:
 
 # --- Strategie-Profile (relative Offsets, NICHT persistent) ---
 PROFILES = {
-    "Conservative": {},
+    # ✅ Baseline – aktueller Algorithmus
+    "Conservative": {
+        "ENTRY": {
+            "rsi_thr": 35,
+            "bb_pos_thr": 0.20,
+            "require_hist_rising": False,
+            "entry_window_days": 4,
+        },
+        "CONFIDENCE": {
+            "validation_bonus": 15,
+            "erosion_penalty": 8,
+            "erosion_margin": 5,
+        }
+    },
 
-    # etwas früher rein, aber hochwertige Signale bleiben
+    # 🟡 moderat gelockert
     "Balanced": {
         "RSI": {"trend_bias": -6},
         "ADX": {"strong_trend": -2},
-        "ATR_MULTS": {"range_market": {"tp": +0.2}},
+        "ENTRY": {
+            "rsi_thr": 38,
+            "bb_pos_thr": 0.25,
+            "require_hist_rising": False,
+            "entry_window_days": 5,
+        },
+        "CONFIDENCE": {
+            "validation_bonus": 18,
+            "erosion_penalty": 6,
+            "erosion_margin": 6,
+        }
     },
 
-    # deutlich mehr Trades, trotzdem marktkonform
+    # 🔴 klar aggressiver
     "Aggressive": {
         "RSI": {"trend_bias": -10},
         "ADX": {"strong_trend": -4},
-        "ATR_MULTS": {"range_market": {"tp": +0.4}},
+        "ENTRY": {
+            "rsi_thr": 40,
+            "bb_pos_thr": 0.30,
+            "require_hist_rising": False,
+            "entry_window_days": 6,
+        },
+        "CONFIDENCE": {
+            "validation_bonus": 22,
+            "erosion_penalty": 4,
+            "erosion_margin": 7,
+        }
     },
 }
 
