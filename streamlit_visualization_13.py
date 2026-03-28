@@ -274,7 +274,6 @@ def aktienseite():
         strong_trend=thresholds["ADX"]["strong_trend"],
         extreme_trend=thresholds["ADX"]["extreme_trend"],
     )
-    macd_zwei_analysis = MACDAnalysis_Confirmations()
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
     stochastic_analysis = StochasticAnalysis()
@@ -307,8 +306,6 @@ def aktienseite():
     rsi_interp = rsi_result["interpretation"]
     macd_result = macd_analysis.analyse(data)
     macd_interp = macd_result["interpretation"]
-    macd_zwei_result = macd_zwei_analysis.analyse(data)
-    macd_zwei_interp = macd_zwei_result["interpretation"]
     adx_result = adx_analysis.analyse(data)
     ma_result = ma_analysis.analyse(data)
     bollinger_result = bollinger_analysis.analyze(data)
