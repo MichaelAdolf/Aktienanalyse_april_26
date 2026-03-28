@@ -64,7 +64,6 @@ from learning_optimizer import (
     optimize_symbol
 )
 
-from SwingtradingSignale import RSIAnalysis, MACDAnalysis, ADXAnalysis, MAAnalysis, MarketRegimeAnalysis, TradeDecisionEngine
 from core_magic_3 import lade_daten_aktie, berechne_indikatoren
 from config_thresholds import get_thresholds, apply_profile
 
@@ -409,24 +408,7 @@ def aktienseite():
                     f"- **ADX:** {adx_result['trend_acceleration']}"
                     )
 
-        # --- 2 Spalten Layout ---
-        col1, col2 = st.columns([1,1])
-
-        # --- 1️⃣ LINKE SPALTE ---
-        with col1:
-            # ✅ historische Auswertung
-            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
-
-        # --- 2️⃣ MITTLERE SPALTE ---
-        with col2:
-            with st.container(border=True):
-                zeige_ruleengine_buyperioden_und_trefferquote(
-                    data=data,
-                    symbol=symbol,
-                    Auswertung_tage=Auswertung_tage,
-                    min_veraenderung=min_veraenderung,
-                    max_gap_days=5
-                )
+        
             
 
     # ---------------------------------------------------------
@@ -665,6 +647,24 @@ def aktienseite():
             st.dataframe(df_export.head(20))
                 
     with Algorithmus:
+        # --- 2 Spalten Layout ---
+        col1, col2 = st.columns([1,1])
+
+        # --- 1️⃣ LINKE SPALTE ---
+        with col1:
+            # ✅ historische Auswertung
+            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
+
+        # --- 2️⃣ MITTLERE SPALTE ---
+        with col2:
+            with st.container(border=True):
+                zeige_ruleengine_buyperioden_und_trefferquote(
+                    data=data,
+                    symbol=symbol,
+                    Auswertung_tage=Auswertung_tage,
+                    min_veraenderung=min_veraenderung,
+                    max_gap_days=5
+                )
         with st.expander("Aktive Parameter (nach Merge)"):
             st.json(thresholds)
 
