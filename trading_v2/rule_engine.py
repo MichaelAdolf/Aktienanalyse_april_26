@@ -50,7 +50,7 @@ class RuleEngineV2:
         mode = self.policy.mode
         resolved = resolve_params(symbol, mode, self.global_cfg, self.learned)
         if resolved:
-                params.updat(resolved)
+                params.update(resolved)
         rsi_thr = float(params.get('rsi_thr', 35))
         bb_pos_thr = float(params.get('bb_pos_thr', 0.20))
         require_hist_rising = bool(params.get('require_hist_rising', False))
