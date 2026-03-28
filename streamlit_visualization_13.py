@@ -27,7 +27,6 @@ from SwingtradingSignale import(
     ATRQualityAnalysis,
     MarketRegimeAnalysis,
     EntryQualityAnalysis,
-    PositionSizer,
     SwingSignalService,
     STRATEGY_RULES
 )
