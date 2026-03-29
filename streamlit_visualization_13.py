@@ -453,7 +453,7 @@ def aktienseite():
             with st.container(border=True):
                 indikatoren_boards.rsi_databoard(rsi_latest, rsi_history)
                 indikatoren_diagram.plot_rsi(data, symbol)
-                render_interp(rsi_result[interpretation])
+                render_interp(rsi_result["interpretation"])
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
         # ---------------------------------------------------------
