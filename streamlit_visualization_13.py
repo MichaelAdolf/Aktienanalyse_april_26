@@ -359,7 +359,7 @@ def aktienseite():
                     Analysten.zeichne_rating_gauge(rating_counts)
 
         # --- 2 Spalten Layout ---
-        col1, col2, col3 = st.columns([1,1,1])
+        col1, col2 = st.columns([1,1])
 
         # --- 1️⃣ LINKE SPALTE ---
         with col1:
@@ -368,7 +368,7 @@ def aktienseite():
                 fundamental_alanalyzer.fundamental_summary(data_fund)
             
 
-        # --- 2️⃣ MITTLERE SPALTE ---
+        # --- 2️⃣ RECHTE SPALTE ---
         with col2:
             with st.container(border=True):
                 st.subheader("🔄 Swingtrading Übersicht (RuleEngineV2)")
@@ -379,14 +379,6 @@ def aktienseite():
                     st.error("❌ SELL – Exit Transition")
                 else:
                     st.info("⏸ HOLD – kein Trade")
-
-        # --- 2️⃣ RECHTE SPALTE ---
-        with col3:
-            with st.container(border=True):   
-                st.subheader("Indikatorenauswertung:")             
-                st.markdown(
-                    f"- **MACD:** {macd_interp['meaning']}\n"
-                    )
 
     # ---------------------------------------------------------
     # TAB HANDEL
