@@ -279,82 +279,87 @@ def lade_analystenbewertung(symbol):
 
     return anal_data
 
-
 def erklaere_kategorien(profil: str, trading_status: str) -> str:
     """
-    Gibt einen erklärenden Text zu mehreren Profilen und Trading-Status zurück.
-    
+    Gibt eine rein beschreibende Charakterisierung des Marktverhaltens
+    und des Handelsumfelds einer Aktie zurück.
+
+    WICHTIG:
+    - Die Texte sind rein informativ.
+    - Sie stellen keine Bewertung und keine Handlungsempfehlung dar.
+    - Sie haben keinen Einfluss auf Handelssignale oder die RuleEngine.
+
     Argumente:
-    - profil: dict, z.B. {"Growth": True, "Value": False, ...}
-    - trading_status: dict, z.B. {"Momentum": True, "Volatil": False}
-    
+    - profil: String, z.B. "Growth, Zyklisch"
+    - trading_status: String, z.B. "Momentum, Volatil"
+
     Rückgabe:
-    - String mit erklärenden Texten kombiniert.
+    - String mit erklärenden, nicht-normativen Texten.
     """
 
     texte = {
         "Growth": (
-            "Wachstumsaktien (Growth) zeichnen sich durch ein starkes Umsatz- und "
-            "Gewinnwachstum aus. Sie investieren stark in Expansion, besitzen oft hohe "
-            "Volatilität und reagieren stark auf Marktstimmung. Typisch sind Tech- oder "
-            "Innovationsunternehmen mit überdurchschnittlichem Kursmomentum."
+            "Die Aktie zeigt im betrachteten Zeitraum Merkmale eines wachstumsorientierten "
+            "Marktverhaltens. Solche Werte sind häufig durch erhöhte Investitionstätigkeit, "
+            "stärkere Kursreaktionen auf Nachrichten und eine höhere Sensitivität gegenüber "
+            "Marktstimmung gekennzeichnet."
         ),
         "Value": (
-            "Value-Aktien sind unterbewertete Unternehmen mit stabilem Geschäftsmodell. "
-            "Sie weisen häufig niedrige Bewertungskennzahlen wie das KGV und eine solide "
-            "Dividendenrendite auf. Diese Aktien sind defensiver und weniger volatil."
+            "Die Aktie weist Merkmale eines wertorientierten Marktverhaltens auf. Solche Werte "
+            "zeigen häufig stabilere Kursverläufe und geringere Reaktionsgeschwindigkeit "
+            "gegenüber kurzfristigen Marktereignissen."
         ),
         "Zyklisch": (
-            "Zyklische Aktien hängen stark vom Konjunkturverlauf ab. In Aufschwungphasen "
-            "performen sie besonders gut, während sie in Abschwüngen deutliche Verluste "
-            "erleiden können. Typisch sind Auto-, Industrie- oder Rohstoffunternehmen."
+            "Die Kursentwicklung der Aktie ist im betrachteten Zeitraum deutlich vom "
+            "gesamtwirtschaftlichen Umfeld geprägt. Zyklische Werte reagieren häufig stärker "
+            "auf Konjunkturveränderungen und makroökonomische Impulse."
         ),
         "Defensiv": (
-            "Defensive Aktien sind krisenresistent und besitzen stabile Umsätze - unabhängig "
-            "vom Konjunkturzyklus. Sie gehören oft zu den Sektoren Gesundheit, "
-            "Versorger oder Basiskonsum und haben moderate Volatilität."
+            "Die Aktie zeigt ein eher defensives Marktverhalten. Solche Werte weisen häufig "
+            "eine geringere Schwankungsintensität auf und reagieren weniger stark auf "
+            "konjunkturelle Veränderungen."
         ),
         "Volatil": (
-            "Volatile Aktien schwanken stark im Kurs. Sie besitzen hohe ATR-Werte, oft "
-            "eine geringe Marktkapitalisierung und reagieren stark auf Nachrichten. "
-            "Ideal für Trader, riskanter für langfristige Anleger."
+            "Die Aktie weist eine erhöhte Schwankungsintensität auf. Kursbewegungen fallen "
+            "im betrachteten Zeitraum überdurchschnittlich stark aus, was auf ein sensibles "
+            "Reaktionsverhalten gegenüber Marktimpulsen hinweist."
         ),
         "Momentum": (
-            "Momentum-Aktien weisen starke und anhaltende Trends auf. Sie steigen oft "
-            "überproportional bei positiven Nachrichten und zeigen ein klares technisches "
-            "Trendverhalten (RSI, MACD, Breakouts)."
+            "Die Aktie zeigt im betrachteten Zeitraum ein ausgeprägtes Trendverhalten. "
+            "Solche Marktphasen sind durch anhaltende Kursbewegungen in eine Richtung "
+            "gekennzeichnet, unabhängig von deren Dauer oder Nachhaltigkeit."
         ),
         "Unbekannt": (
-            "Kategorie konnte nicht eindeutig bestimmt werden. Es fehlen Informationen "
-            "oder die Aktie erfüllt gemischte Kriterien."
+            "Das Marktverhalten konnte nicht eindeutig charakterisiert werden. "
+            "Die vorliegenden Merkmale sind uneinheitlich oder nicht ausreichend ausgeprägt."
         ),
     }
 
     ergebnisse = []
 
-    # Falls leerer String übergeben wird, in leere Liste umwandeln
+    # Eingaben in Listen umwandeln
     profil_liste = [p.strip() for p in profil.split(",")] if profil else []
     trading_liste = [t.strip() for t in trading_status.split(",")] if trading_status else []
 
-    # Profiltexte sammeln
+    # Marktverhalten (Profil)
     for key in profil_liste:
-        if key in texte:
-            ergebnisse.append(texte[key])
-        else:
-            ergebnisse.append(texte["Unbekannt"])
+        ergebnisse.append(texte.get(key, texte["Unbekannt"]))
 
-    # Trading-Status-Texte sammeln
+    # Handelsumfeld (Trading-Status)
     for key in trading_liste:
-        if key in texte:
-            ergebnisse.append(texte[key])
-        else:
-            ergebnisse.append(texte["Unbekannt"])
+        ergebnisse.append(texte.get(key, texte["Unbekannt"]))
 
     if not ergebnisse:
-        return texte["Unbekannt"]
+        ergebnisse.append(texte["Unbekannt"])
+
+    # Klarer Hinweis am Ende (UX-Leitplanke)
+    ergebnisse.append(
+        "Hinweis: Diese Einordnung beschreibt ausschließlich beobachtete Eigenschaften "
+        "des Marktverhaltens im betrachteten Zeitraum. Sie stellt keine Bewertung der Aktie "
+        "dar und hat keinen Einfluss auf Handelsentscheidungen."
+    )
 
     return "\n\n".join(ergebnisse)
-
 
 # ------------------------------------------------------
 # Indikatoren berechnen
