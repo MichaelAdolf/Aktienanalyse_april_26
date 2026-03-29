@@ -326,12 +326,8 @@ def aktienseite():
         ma10 = data["MA10"].iloc[-1]
     )
 
-    strategy_rules = STRATEGY_RULES.get(strategie, STRATEGY_RULES["Conservative"])
-    market_result = market_analysis.analyse(rsi_result, macd_result, adx_result, ma_result, strategy_rules)
-    market_result["strategy"] = strategie
     rsi_result["trend_bias"] = thresholds["RSI"]["trend_bias"]
-    entryquality_result = entryquality_analysis.analyse(bollinger_result, stochastic_result, market_result, ma_result, atr_result)
-    swingsignal_analysed = swingsignal_analysis.run_analysis(data, Auswertung_tage, min_veraenderung, market_result, rsi_result, macd_result, adx_result)
+
    
     # ---------------------------------------------------------
     # Überschrift der Aktienseite
@@ -469,24 +465,14 @@ def aktienseite():
     # TAB Qualität
     # ---------------------------------------------------------
     with tab_qualität:
-        # --- 2 Spalten Layout ---
-        col1, col2 = st.columns([1,1])
-
-        # --- 1️⃣ LINKE SPALTE ---
-        with col1:
-            # ✅ historische Auswertung
-            zeige_swingtrading_signalauswertung(data, swingsignal_analysed)
-
-        # --- 2️⃣ MITTLERE SPALTE ---
-        with col2:
-            with st.container(border=True):
-                zeige_ruleengine_buyperioden_und_trefferquote(
-                    data=data,
-                    symbol=symbol,
-                    Auswertung_tage=Auswertung_tage,
-                    min_veraenderung=min_veraenderung,
-                    max_gap_days=5
-                )
+        with st.container(border=True):
+            zeige_ruleengine_buyperioden_und_trefferquote(
+                data=data,
+                symbol=symbol,
+                Auswertung_tage=Auswertung_tage,
+                min_veraenderung=min_veraenderung,
+                max_gap_days=5
+            )
 
     # ---------------------------------------------------------
     # TAB CHARTS
