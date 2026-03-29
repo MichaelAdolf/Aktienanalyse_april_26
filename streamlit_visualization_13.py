@@ -337,6 +337,14 @@ def aktienseite():
                 st.metric("Marktverhalten:", klassifikation["Profil"])
                 st.metric("Handelsumfeld:", klassifikation["Trading_Status"])
                 
+                with st.expander("ℹ️ Erläuterung zum Marktverhalten"):
+                    st.write(
+                        erklaere_kategorien(
+                            klassifikation["Profil"],
+                            klassifikation["Trading_Status"]
+                        )
+                    )
+                
                 st.caption(
                     "Diese Einordnung beschreibt das typische Marktverhalten der Aktie "
                     "im betrachteten Zeitraum. Sie dient ausschließlich der Orientierung "
