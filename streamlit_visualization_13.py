@@ -155,46 +155,33 @@ def home_page():
                 st.session_state.page = (name, symbol)
     
         with col_signal:
+        
+            # ---------------------------------
+            # 1) Trading-Signal (entscheidend!)
+            # ---------------------------------
             try:
                 engine = get_rule_engine()
-            
-                # --- Daten laden + Indikatoren (wie bisher) ---
+        
                 data = lade_daten_aktie(symbol, period="6mo")
                 data = berechne_indikatoren(data)
-            
-                # --- neue Entscheidung (State Machine) ---
-                decision = engine.evaluate(symbol, data)   # BUY/SELL/HOLD
+        
+                decision = engine.evaluate(symbol, data)
                 status = decision.signal
-            
-                # --- Telemetrie (optional, aber stark empfohlen) ---
-                today = str(data.index[-1].date())
-                feat = build_features(data, adx_thr=engine.global_cfg.get("risk", {}).get("adx_thr", 30))
-            
-                write_daily_log(
-                    today,
-                    symbol,
-                    {
-                        "mode": engine.policy.mode,
-                        "state": decision.state,
-                        "signal": status,
-                        "features": {k: feat[k] for k in ["rsi", "bb_pos", "macd_hist", "adx", "close"] if k in feat},
-                        "params": engine.learned.get(symbol, {}),
-                        "meta": decision.meta,
-                        "reasons": decision.reasons,
-                    },
-                )
-            
-                # --- Ampel ---
+        
+                # Ampel
                 if status == "BUY":
                     st.markdown("<h3 style='text-align:center;'>🟢</h3>", unsafe_allow_html=True)
                 elif status == "SELL":
                     st.markdown("<h3 style='text-align:center;'>🔴</h3>", unsafe_allow_html=True)
                 else:
                     st.markdown("<h3 style='text-align:center;'>🟡</h3>", unsafe_allow_html=True)
-            
-            except:
+        
+            except Exception as e:
+                # ⚠️ NUR wenn das Signal selbst nicht berechnet werden kann
                 st.markdown("<h3 style='text-align:center;'>⚠️</h3>", unsafe_allow_html=True)
-
+                # optional zum Debuggen:
+                # st.write(f"Signal-Fehler {symbol}: {type(e).__name__} – {e}")
+                decision = None
 
 def aktienseite(): 
     name, symbol = st.session_state.page
