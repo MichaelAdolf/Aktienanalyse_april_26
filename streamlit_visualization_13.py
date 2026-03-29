@@ -288,7 +288,6 @@ def aktienseite():
     market_analysis = MarketRegimeAnalysis()
     atr_analysis = ATRQualityAnalysis()
     entryquality_analysis = EntryQualityAnalysis()
-    swingsignal_analysis = SwingSignalService(thresholds, strategie)
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
 
