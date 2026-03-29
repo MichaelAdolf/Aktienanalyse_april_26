@@ -301,8 +301,8 @@ def aktienseite():
     # ---------------------------------------------------------
     # Definition der TABS
     # ---------------------------------------------------------
-    tab_overview, tab_handel, tab_qualität, tab_charts, tab_ichimoku, tab_fundamentals, tab_export, Algorithmus = st.tabs(
-        ["📈 Übersicht", "🔔Handelsentscheidung", "🎯Algorithmus-Qualität", "📊 Charts", "🌥️ Ichimoku", "🏦 Fundamentaldaten", "📤Export", "Algorithmus"]
+    tab_overview, tab_handel, tab_qualität, tab_charts, tab_fundamentals, tab_export, Algorithmus = st.tabs(
+        ["📈 Übersicht", "🔔Handelsentscheidung", "🎯Algorithmus-Qualität", "📊 Charts", "🏦 Fundamentaldaten", "📤Export", "Algorithmus"]
     )
     # ---------------------------------------------------------
     # TAB Overview
@@ -503,13 +503,6 @@ def aktienseite():
                 indikatoren_diagram.plot_adx(data, symbol)
                 st.markdown(f"### ADX Analyse – {adx_interp.get('headline', '')}")
                 render_interp(adx_interp)
-                
-    with tab_ichimoku:
-        # ---------------------------------------------------------
-        # Hauptchart
-        # ---------------------------------------------------------
-        Ichimoku_analyzer.plot_Ichimoku(data, name)
-
 
     with tab_fundamentals:
         with st.container(border=True):
