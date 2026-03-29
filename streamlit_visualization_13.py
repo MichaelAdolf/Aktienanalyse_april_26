@@ -44,10 +44,6 @@ from core_magic_3 import (
     save_watchlist_json
 )
 
-from config_thresholds import (
-    get_thresholds
-)
-
 def go_to(page_name):
     st.session_state.page = page_name
 
