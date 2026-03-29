@@ -144,6 +144,91 @@ def lade_fundamentaldaten(ticker_symbol):
     }
 
 
+def erklaere_fundamentales_umfeld(fundamentaldaten: dict) -> str:
+    """
+    Beschreibt das fundamentale Unternehmensumfeld auf Basis verfügbarer Kennzahlen.
+
+    WICHTIG:
+    - Rein beschreibend, nicht bewertend
+    - Keine Handlungsempfehlung
+    - Kein Einfluss auf Handelssignale oder Profile
+    """
+
+    texte = []
+
+    # Wachstum / Reifegrad
+    revenue_growth = fundamentaldaten.get("revenue_growth")
+    if revenue_growth is not None:
+        if revenue_growth > 0.10:
+            texte.append(
+                "Das Unternehmen zeigt im betrachteten Zeitraum ein erhöhtes Umsatzwachstum, "
+                "was auf ein wachstumsorientiertes Unternehmensumfeld hindeutet."
+            )
+        elif revenue_growth > 0:
+            texte.append(
+                "Das Unternehmen weist moderates Umsatzwachstum auf, was auf ein eher "
+                "etabliertes, aber weiterhin expandierendes Umfeld schließen lässt."
+            )
+        else:
+            texte.append(
+                "Die Umsätze entwickeln sich stagnierend oder rückläufig, was auf ein "
+                "reiferes oder herausforderndes Unternehmensumfeld hinweist."
+            )
+
+    # Profitabilität
+    profit_margin = fundamentaldaten.get("profit_margin")
+    if profit_margin is not None:
+        if profit_margin > 0.20:
+            texte.append(
+                "Die Profitabilität liegt auf einem vergleichsweise hohen Niveau, "
+                "was auf effiziente Kostenstrukturen oder Preissetzungsmacht hindeutet."
+            )
+        elif profit_margin > 0:
+            texte.append(
+                "Die Profitabilität bewegt sich im moderaten Bereich und spiegelt "
+                "ein ausgeglichenes Verhältnis zwischen Ertrag und Kosten wider."
+            )
+        else:
+            texte.append(
+                "Die Profitabilität ist gering oder negativ, was auf erhöhte Kosten, "
+                "Investitionsphasen oder strukturelle Belastungen hindeuten kann."
+            )
+
+    # Verschuldung / Kapitalstruktur
+    debt_ratio = fundamentaldaten.get("debt_ratio")
+    if debt_ratio is not None:
+        if debt_ratio > 0.6:
+            texte.append(
+                "Die Kapitalstruktur ist vergleichsweise fremdkapitallastig, "
+                "was auf eine stärkere Abhängigkeit von externem Kapital hinweist."
+            )
+        elif debt_ratio > 0.3:
+            texte.append(
+                "Die Kapitalstruktur zeigt ein ausgewogenes Verhältnis zwischen "
+                "Eigen- und Fremdkapital."
+            )
+        else:
+            texte.append(
+                "Die Kapitalstruktur ist überwiegend eigenkapitalbasiert, "
+                "was auf eine solide finanzielle Basis hindeutet."
+            )
+
+    if not texte:
+        texte.append(
+            "Das fundamentale Unternehmensumfeld konnte auf Basis der verfügbaren "
+            "Kennzahlen nicht eindeutig beschrieben werden."
+        )
+
+    texte.append(
+        "Hinweis: Diese Darstellung beschreibt grundlegende Eigenschaften des "
+        "Unternehmensumfelds auf Basis veröffentlichter Kennzahlen. "
+        "Sie stellt keine Bewertung der Aktie dar und hat keinen Einfluss "
+        "auf Handelssignale."
+    )
+
+    return "\n\n".join(texte)
+
+
 def klassifiziere_aktie(symbol, data, fundamentaldaten):
     """
     Klassifiziert die Aktie ohne weitere Netzwerkaufrufe:
