@@ -331,12 +331,17 @@ def aktienseite():
 
         # --- 1️⃣ LINKE SPALTE ---
         with col1:
-            with st.container(border=True):
-                st.subheader("📌 Klassifizierung der Aktie:")
-                st.metric("Profil:", klassifikation["Profil"])
-                st.metric("Trading Status:", klassifikation["Trading_Status"])
-                with st.expander("Details zur Aktien-Kathegorie:"):
-                    st.write(erklaerung)
+            with st.container(border=True):      
+                st.subheader("📌 Charakterisierung des Marktverhaltens")
+                
+                st.metric("Marktverhalten:", klassifikation["Profil"])
+                st.metric("Handelsumfeld:", klassifikation["Trading_Status"])
+                
+                st.caption(
+                    "Diese Einordnung beschreibt das typische Marktverhalten der Aktie "
+                    "im betrachteten Zeitraum. Sie dient ausschließlich der Orientierung "
+                    "und hat keinen Einfluss auf Handelssignale."
+                )
 
         # --- 2️⃣ RECHTE SPALTE ---
         with col2:
