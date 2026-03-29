@@ -279,7 +279,7 @@ def aktienseite():
     ma_result = ma_analysis.analyse(data)
     bollinger_result = bollinger_analysis.analyze(data)
     stochastic_result = stochastic_analysis.analyze(data)
-    stoch_interp = stochastics_result["interpretation"]
+    stoch_interp = stochastic_result["interpretation"]
     adx_result = adx_analysis.analyse(data)
     adx_interp = adx_result["interpretation"]
     
