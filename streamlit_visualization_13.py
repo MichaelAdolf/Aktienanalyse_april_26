@@ -201,14 +201,8 @@ def aktienseite():
     # ---------------------------------------------------------
     # Sidebar-Parameter laden
     # ---------------------------------------------------------  
-    tage, min_veraenderung, Auswertung_tage = lade_sidebar_parameter()
-    use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True)
-    st.sidebar.subheader("🧠 Strategie-Profil")
-    profile = st.sidebar.selectbox(
-        "Profil wählen",
-        ["Conservative", "Balanced", "Aggressive"],
-        index=0
-    )
+    tage, min_veraenderung, Auswertung_tage, use_auto, profile = lade_sidebar_parameter()
+
     # für Home-Seite Ampel-Rendering merken
     st.session_state["active_profile"] = profile
     st.session_state["use_auto"] = use_auto
@@ -600,8 +594,16 @@ def lade_sidebar_parameter():
         value=61,
         step=1
     )
+
+    use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True)
+    st.sidebar.subheader("🧠 Strategie-Profil")
+    profile = st.sidebar.selectbox(
+        "Profil wählen",
+        ["Conservative", "Balanced", "Aggressive"],
+        index=0
+    )
     
-    return tage, min_veraenderung, auswertung_tage
+    return tage, min_veraenderung, auswertung_tage, use_auto, profile
 
 def plot_priodenchart(data, symbol, version, kaufperioden=None):
     fig = go.Figure()
