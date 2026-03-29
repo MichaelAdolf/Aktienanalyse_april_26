@@ -11,7 +11,7 @@ from signals_generation import (
 
 from trading_v2.rule_engine import RuleEngineV2
 from trading_v2.features import build_features
-from trading_v2.telemetry import write_daily_log
+from trading_v2.telemetry import write_daily_loge
 from trading_v2.wfo_optimizer import (optimize_symbol_wfo, write_learned, write_report)
 from trading_v2.config_loader import load_global, load_learned, load_ui_policy, resolve_params
 
@@ -189,6 +189,30 @@ def aktienseite():
     # Sidebar-Parameter laden
     # ---------------------------------------------------------  
     tage, min_veraenderung, Auswertung_tage, use_auto, profile = lade_sidebar_parameter()
+    
+    st.sidebar.subheader("🧠 Lernende Parameter")
+    
+    if st.sidebar.button(
+        "Parameter für dieses Symbol rekalibrieren",
+        help="Führt eine Walk-Forward-Optimierung der BUY-Parameter "
+             "für das aktuell ausgewählte Symbol durch "
+             "und speichert das Ergebnis in learned_params.json."
+    ):
+        with st.spinner(f"Rekalibriere Parameter für {symbol} ..."):
+            from learning_optimizer import learn_symbol
+    
+            res = learn_symbol(
+                symbol=symbol,
+                period="4y",
+                persist=True,
+                write_json_report=True,
+            )
+    
+        st.sidebar.success(
+            f"✅ Neu gelernt für {res.symbol}\n"
+            f"OOS-Hitrate: {res.best_oos_hit_rate:.2f}"
+        )
+
 
     # für Home-Seite Ampel-Rendering merken
     st.session_state["active_profile"] = profile
@@ -295,23 +319,6 @@ def aktienseite():
     # TAB Overview
     # ---------------------------------------------------------
     with tab_overview:
-        with st.container(border=True):
-                # --- Kalibrierungs-Button ---
-                if st.button("🔁 Parameter für dieses Symbol rekalibrieren (WFO V2)"):
-                    with st.spinner("WFO: Grid + Triple-Barrier Labels…"):
-                        try:
-                            report = optimize_symbol_wfo(symbol, data_full)
-                            params = report.get("best_params", {}) or {}
-                            write_learned(symbol, params)
-                            rep_path = write_report(report)
-                            st.success(f"WFO fertig. Best OOS hit rate: {report.get('best_oos_hit_rate', 0):.3f}")
-                            st.json(params)
-                            st.info(f"Report gespeichert: {rep_path}")
-                            st.cache_data.clear()
-                            st.cache_resource.clear()
-                        except Exception as e:
-                            st.error(f"WFO fehlgeschlagen: {e}")
-
         with st.container(border=True):
             main_analyzer.plot_hautpchart(name, 1)
         # --- 2 Spalten Layout ---
