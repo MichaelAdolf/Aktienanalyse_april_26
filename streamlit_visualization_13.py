@@ -11,7 +11,7 @@ from signals_generation import (
 
 from trading_v2.rule_engine import RuleEngineV2
 from trading_v2.features import build_features
-from trading_v2.telemetry import write_daily_loge
+from trading_v2.telemetry import write_daily_log
 from trading_v2.wfo_optimizer import (optimize_symbol_wfo, write_learned, write_report)
 from trading_v2.config_loader import load_global, load_learned, load_ui_policy, resolve_params
 
