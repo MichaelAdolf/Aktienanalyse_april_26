@@ -48,7 +48,13 @@ class RuleEngineV2:
         adx_thr = float(risk.get('adx_thr', 30))
 
         mode = self.policy.mode
-        resolved = resolve_params(symbol, mode, self.global_cfg, self.learned)
+        params = resolve_params(
+            symbol,
+            mode=self.policy.mode,
+            global_cfg=self.global_cfg,
+            learned=self.learned,
+            active_profile=getattr(self.policy, "active_profile", "Conservative"),
+        )
         if resolved:
                 params.update(resolved)
         rsi_thr = float(params.get('rsi_thr', 35))
