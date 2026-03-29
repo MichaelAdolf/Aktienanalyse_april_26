@@ -38,6 +38,7 @@ from core_magic_3 import (
     lade_analystenbewertung,
     berechne_indikatoren,
     lade_fundamentaldaten,
+    erklaere_fundamentales_umfeld,
     klassifiziere_aktie,
     erklaere_kategorien,
     save_watchlist_json
@@ -366,7 +367,9 @@ def aktienseite():
             with st.container(border=True):
                 st.subheader("🏦 Fundamental Übersicht:")
                 fundamental_alanalyzer.fundamental_summary(data_fund)
-            
+                with st.expander("ℹ️ Erläuterung zum fundamentalen Unternehmensumfeld"):
+                    st.write(
+                        erklaere_fundamentales_umfeld(data_fund)
 
         # --- 2️⃣ RECHTE SPALTE ---
         with col2:
