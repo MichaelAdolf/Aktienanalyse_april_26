@@ -12,8 +12,6 @@ from signals_generation import (
 from trading_v2.rule_engine import (
     RuleEngineV2,
     build_features,
-    write_learned, 
-    write_report,
     load_global
 )
 
