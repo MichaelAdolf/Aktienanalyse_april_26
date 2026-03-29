@@ -21,8 +21,7 @@ from SwingtradingSignale import(
     ADXAnalysis,
     MAAnalysis,
     BollingerAnalysis,
-    StochasticAnalysis,
-    ATRQualityAnalysis
+    StochasticAnalysis
 )
 
 from views import(
@@ -250,7 +249,6 @@ def aktienseite():
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
     stochastic_analysis = StochasticAnalysis()
-    atr_analysis = ATRQualityAnalysis()
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
 
@@ -275,15 +273,6 @@ def aktienseite():
     ma_result = ma_analysis.analyse(data)
     bollinger_result = bollinger_analysis.analyze(data)
     stochastic_result = stochastic_analysis.analyze(data)
-    atr_14 = atr_analysis.calculate_atr(data)
-    # Analyse für den letzten Kurs
-    atr_result = atr_analysis.analyse(
-        current_price = data["Close"].iloc[-1],
-        atr = data["ATR"].iloc[-1],
-        ma50 = data["MA50"].iloc[-1],
-        ma10 = data["MA10"].iloc[-1]
-    )
-
    
     # ---------------------------------------------------------
     # Überschrift der Aktienseite
