@@ -17,7 +17,7 @@ class UiPolicy:
     meta_enabled: bool
     meta_threshold: float
     show_suppressed: bool
-
+    active_profile: str
 
 def _read_json(path: Path, default: Any) -> Any:
     try:
