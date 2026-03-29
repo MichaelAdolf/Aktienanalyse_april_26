@@ -427,7 +427,7 @@ def aktienseite():
                 elif decision_v2.signal == "SELL":
                     st.error("❌ SELL – Exit Transition")
                 else:
-                    st.info("⏸ HOLD – kein Transition‑Tag")s   
+                    st.info("⏸ HOLD – kein Transition‑Tag")
     
     # ---------------------------------------------------------
     # TAB Qualität
