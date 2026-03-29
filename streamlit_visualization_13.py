@@ -552,8 +552,87 @@ def aktienseite():
         with st.expander("🔎 Vorschau (erste 20 Zeilen)"):
             st.dataframe(df_export.head(20))
                 
+    
     with Algorithmus:
-         st.subheader("Aktuell Platzhalter")   
+        st.subheader("🧪 Algorithmus (RuleEngineV2) – Aktive Parameter & Profilvergleich")
+    
+        # 1) Aktiver Zustand (was gerade ausgewählt ist)
+        st.caption(
+            f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}** "
+            f"| Auswertung: {Auswertung_tage} Tage | Mindestanstieg: {min_veraenderung*100:.1f}%"
+        )
+    
+        # 2) Aktive Entry-Parameter für das aktuell ausgewählte Profil (und Auto ON/OFF)
+        st.markdown("### ✅ Aktive Entry-Parameter (für dieses Symbol)")
+        active_params = _load_rule_params(symbol, active_profile=profile, use_auto=use_auto)
+        st.json(active_params)
+    
+        # 3) Profilvergleich – immer live neu berechnen
+        st.markdown("### 📊 Profilvergleich (Conservative vs Balanced vs Aggressive)")
+    
+        rows = []
+        profiles = ["Conservative", "Balanced", "Aggressive"]
+    
+        for prof in profiles:
+            p = _load_rule_params(symbol, active_profile=prof, use_auto=use_auto)
+    
+            buy_dates = _ruleengine_buy_days(
+                data,
+                rsi_thr=float(p.get("rsi_thr", 35)),
+                bb_pos_thr=float(p.get("bb_pos_thr", 0.20)),
+                require_hist_rising=bool(p.get("require_hist_rising", False)),
+            )
+    
+            periods = _cluster_periods_from_dates(buy_dates, max_gap_days=5)
+            df_eval = _evaluate_periods(periods, data, Auswertung_tage, min_veraenderung)
+    
+            if df_eval is None or df_eval.empty:
+                done = 0
+                open_ = 0
+                hitrate = None
+            else:
+                df_done = df_eval[df_eval["Signal"].notna()].copy()
+                df_open = df_eval[df_eval["Signal"].isna()].copy()
+                done = len(df_done)
+                open_ = len(df_open)
+                hitrate = round(float(df_done["Signal"].mean() * 100), 2) if done > 0 else None
+    
+            rows.append({
+                "Profil": prof,
+                "rsi_thr": p.get("rsi_thr"),
+                "bb_pos_thr": p.get("bb_pos_thr"),
+                "require_hist_rising": p.get("require_hist_rising"),
+                "BUY-Tage": len(buy_dates),
+                "Perioden (gesamt)": len(periods),
+                "Abgeschlossen": done,
+                "Offen": open_,
+                "Trefferquote % (abgeschlossen)": hitrate,
+            })
+    
+        df_cmp = pd.DataFrame(rows)
+    
+        # Highlight / Sortierung (optional)
+        df_cmp = df_cmp.sort_values(by=["BUY-Tage", "Trefferquote % (abgeschlossen)"], ascending=[False, False])
+    
+        st.dataframe(df_cmp, use_container_width=True)
+    
+        # 4) Optional: Detail-Expander pro Profil (Perioden-Tabelle)
+        with st.expander("🔍 Details je Profil (Perioden-Tabelle)"):
+            prof_pick = st.selectbox("Profil für Details", profiles, index=profiles.index(profile), key="algo_profile_details_pick")
+            p = _load_rule_params(symbol, active_profile=prof_pick, use_auto=use_auto)
+            buy_dates = _ruleengine_buy_days(
+                data,
+                rsi_thr=float(p.get("rsi_thr", 35)),
+                bb_pos_thr=float(p.get("bb_pos_thr", 0.20)),
+                require_hist_rising=bool(p.get("require_hist_rising", False)),
+            )
+            periods = _cluster_periods_from_dates(buy_dates, max_gap_days=5)
+            df_eval = _evaluate_periods(periods, data, Auswertung_tage, min_veraenderung)
+            if df_eval is None or df_eval.empty:
+                st.info("Keine Perioden im aktuellen Zeitraum.")
+            else:
+                st.dataframe(df_eval, use_container_width=True)
+  
 
 # ------------------------------
 # Sidebar: Parameter laden
