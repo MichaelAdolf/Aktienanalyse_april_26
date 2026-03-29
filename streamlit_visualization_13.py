@@ -272,6 +272,7 @@ def aktienseite():
     rsi_result = rsi_analysis.analyse(data)
     rsi_latest = {"value": rsi_result["value"], "label": rsi_result["state"]}
     rsi_history = rsi_analysis.analyze_history(data)
+    rsi_interp = rsi_result["interpretation"]
     macd_result = macd_analysis.analyse(data)
     macd_interp = macd_result["interpretation"]
     ma_result = ma_analysis.analyse(data)
@@ -453,7 +454,9 @@ def aktienseite():
             with st.container(border=True):
                 indikatoren_boards.rsi_databoard(rsi_latest, rsi_history)
                 indikatoren_diagram.plot_rsi(data, symbol)
-                render_interp(rsi_result["interpretation"])
+                st.markdown(f"### RSI – {macd_interp.get('headline', '')}")
+
+                render_interp(rsi_result["rsi_interp"])
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
         # ---------------------------------------------------------
