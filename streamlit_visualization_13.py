@@ -50,21 +50,9 @@ from core_magic_3 import (
     save_watchlist_json
 )
 
-from signals_2 import (
-    analyse_kaufsignal_perioden
-)
-
 from config_thresholds import (
-    get_thresholds,
-    apply_profile
+    get_thresholds
 )
-
-from learning_optimizer import (
-    optimize_symbol
-)
-
-from core_magic_3 import lade_daten_aktie, berechne_indikatoren
-from config_thresholds import get_thresholds, apply_profile
 
 def go_to(page_name):
     st.session_state.page = page_name
@@ -254,7 +242,6 @@ def aktienseite():
 
     # ---------------------------------------------------------
 
-    # thresholds = get_thresholds(symbol=symbol, sector=sector)
     thresholds = get_thresholds(symbol if use_auto else None, sector)  # learned aus/an
     st.sidebar.subheader("🧠 Strategie-Profil")
     profile = st.sidebar.selectbox(
@@ -601,40 +588,7 @@ def aktienseite():
                 
     with Algorithmus:
         with st.expander("Aktive Parameter (nach Merge)"):
-            st.json(thresholds)
-
-        """
-        with st.container(border=True):
-            st.subheader("Analyse der Signale")
-            zeige_kaufsignal_analyse(data, Auswertung_tage, min_veraenderung) 
-            st.subheader("🔄 Swingtrading Übersicht:")
-            Swingtrading.zeige_swingtrading_signalauswertung(data, Auswertung_tage, min_veraenderung, klassifikation["Profil"], klassifikation["Trading_Status"])
-            st.subheader("🔄 Swingtrading Übersicht:")
-            Swingtrading.zeige_swingtrading_signalauswertung_2(data, Auswertung_tage, min_veraenderung, klassifikation["Profil"], klassifikation["Trading_Status"])
-
-        with st.container(border=True):
-            analyse_ergebnis = analyse_kaufsignal_perioden(data, Auswertung_tage, min_veraenderung)
-            # macht es nicht Sinn, die folgende Formatierung in die Funktion mit aufzunehmen?
-            df_details = pd.DataFrame(analyse_ergebnis["Perioden_Bewertung"])
-            df_details.columns = ["Start", "Ende", "Signal", "Wert1", "Wert2", "Beschreibung", "ExtraInfo"]
-            df_details["Signal"] = df_details["Signal"].astype(str).str.upper() == "TRUE"
-            df_details["Start"] = pd.to_datetime(df_details["Start"])
-            df_details["Ende"] = pd.to_datetime(df_details["Ende"])
-            st.subheader("Kennzeichnung der Original-Perioden")
-            plot_priodenchart(data, name, 2, kaufperioden=df_details)
-        
-        with st.container(border=True):
-            analyse_ergebnis = period_analyzer.analyse_kaufsignal_perioden(data, Auswertung_tage, min_veraenderung, klassifikation["Profil"], klassifikation["Trading_Status"])
-            # macht es nicht Sinn, die folgende Formatierung in die Funktion mit aufzunehmen?
-            df_details = pd.DataFrame(analyse_ergebnis["Perioden_Bewertung"])
-            df_details.columns = ["Start", "Ende", "Signal", "Wert1", "Wert2", "Beschreibung", "ExtraInfo"]
-            df_details["Signal"] = df_details["Signal"].astype(str).str.upper() == "TRUE"
-            df_details["Start"] = pd.to_datetime(df_details["Start"])
-            df_details["Ende"] = pd.to_datetime(df_details["Ende"])
-            st.subheader("Kennzeichnung der Original-Perioden")
-            period_analyzer.plot_priodenchart(data, name, 3, kaufperioden=df_details)
-            """
-        
+            st.json(thresholds)      
 
 # ------------------------------
 # Sidebar: Parameter laden
@@ -644,6 +598,7 @@ def lade_sidebar_parameter():
     period_map = {
         "6 Monate": 180,
         "1 Jahr": 365,
+        "2 Jahre": 730,
         "3 Jahre": 1095
     }
     tage = period_map[zeitraum]
@@ -665,69 +620,6 @@ def lade_sidebar_parameter():
     )
     
     return tage, min_veraenderung, auswertung_tage
-
-def zeige_kaufsignal_analyse(data, Auswertung_tage, min_veraenderung):
-    """
-    Führt die Analyse der Kaufsignal-Perioden durch
-    und zeigt die wichtigsten Kennzahlen und Details in Streamlit an.
-    """
-
-    # Analyse aus Kernfunktion laden
-    analyse_ergebnis = analyse_kaufsignal_perioden(data, Auswertung_tage, min_veraenderung)
-
-    st.write(f"Anzahl Kaufsignale (gesamt): {analyse_ergebnis.get('Anzahl_Kaufsignale', 0)}")
-
-    # Perioden-Bewertung prüfen
-    if "Perioden_Bewertung" not in analyse_ergebnis:
-        st.info("Keine Perioden-Bewertung verfügbar.")
-        return
-
-    df_details = pd.DataFrame(analyse_ergebnis["Perioden_Bewertung"])
-    df_details.columns = ["Start", "Ende", "Signal", "Wert1", "Wert2", "Beschreibung", "ExtraInfo"]
-
-    # Signal in Bool umwandeln
-    df_details["Signal"] = df_details["Signal"].astype(str).str.upper() == "TRUE"
-
-    # Start-Datum als datetime
-    df_details["Start"] = pd.to_datetime(df_details["Start"])
-
-    # Ende-Datum als datetime
-    df_details["Ende"] = pd.to_datetime(df_details["Ende"])
-
-    # letztes Kursdatum
-    letztes_datum = data.index[-1]
-
-    # Ende + Bewertungsdauer = Zeitpunkt, ab dem man die Periode werten darf
-    df_details["Bewertung_fertig_ab"] = df_details["Ende"] + pd.Timedelta(days=Auswertung_tage)
-
-    # Perioden klassifizieren
-    df_abgeschlossen = df_details[df_details["Bewertung_fertig_ab"] <= letztes_datum]
-    df_offen = df_details[df_details["Bewertung_fertig_ab"] > letztes_datum]
-
-    # Neue korrekte Trefferquote berechnen
-    gesamt = len(df_abgeschlossen)
-    if gesamt > 0:
-        prozent_true = (df_abgeschlossen["Signal"].sum() / gesamt) * 100
-    else:
-        prozent_true = 0
-
-    st.write(f"Ausgewertete abgeschlossene Perioden: {gesamt}")
-    st.metric("Trefferquote (nur abgeschlossene Perioden)", f"{prozent_true:.2f} %")
-    
-    with st.expander("Details zu den Perioden"):
-        st.markdown("### 📘 Abgeschlossene Signalperioden")
-        if len(df_abgeschlossen) > 0:
-            st.dataframe(df_abgeschlossen)
-        else:
-            st.info("Es gibt aktuell keine abgeschlossenen Perioden.")
-
-        st.markdown("### ⏳ Laufende Signalperioden")
-        if len(df_offen) > 0:
-            df_tmp = df_offen.copy()
-            df_tmp["Tage_bis_fertig"] = (df_tmp["Bewertung_fertig_ab"] - letztes_datum).dt.days
-            st.dataframe(df_tmp)
-        else:
-            st.success("Alle abgeschlossenen Perioden wurden ausgewertet – keine offenen Perioden vorhanden.")
 
 def plot_priodenchart(data, symbol, version, kaufperioden=None):
     fig = go.Figure()
@@ -1002,7 +894,6 @@ def zeige_ruleengine_buyperioden_und_trefferquote(
     with st.expander("📘 Perioden-Bewertung (Details)"):
         st.dataframe(df_eval)
 
-    # Optional: Perioden im Chart markieren (nutzt deine bestehende plot_priodenchart Funktion)
     try:
         df_plot = df_eval.copy()
         df_plot["Start"] = pd.to_datetime(df_plot["Start"])
@@ -1136,48 +1027,3 @@ def build_indicator_export_excel(data_full: pd.DataFrame, symbol: str, years: fl
         # Fallback: CSV
         csv_bytes = df_export.to_csv(index=False).encode("utf-8")
         return csv_bytes, df_export, missing, "csv"
-
-
-
-# ---------------------------------------------------------
-# Ergänzende Funktion für DailyMail
-# ---------------------------------------------------------
-def berechne_swingtrading_trefferquote(data, auswertung_tage, min_veraenderung):
-    """
-    Gibt nur die Trefferquote (prozent_true) zurück
-    """
-
-    analyse_ergebnis = analyse_kaufsignal_perioden(
-        data,
-        auswertung_tage,
-        min_veraenderung
-    )
-
-    if "Perioden_Bewertung" not in analyse_ergebnis:
-        return None
-
-    df_details = pd.DataFrame(analyse_ergebnis["Perioden_Bewertung"])
-    df_details.columns = [
-        "Start", "Ende", "Signal",
-        "Wert1", "Wert2", "Beschreibung", "ExtraInfo"
-    ]
-
-    df_details["Signal"] = df_details["Signal"].astype(str).str.upper() == "TRUE"
-    df_details["Start"] = pd.to_datetime(df_details["Start"])
-    df_details["Ende"] = pd.to_datetime(df_details["Ende"])
-
-    letztes_datum = data.index[-1]
-    df_details["Bewertung_fertig_ab"] = (
-        df_details["Ende"] + pd.Timedelta(days=auswertung_tage)
-    )
-
-    df_abgeschlossen = df_details[
-        df_details["Bewertung_fertig_ab"] <= letztes_datum
-    ]
-
-    gesamt = len(df_abgeschlossen)
-    if gesamt == 0:
-        return 0.0
-
-    prozent_true = (df_abgeschlossen["Signal"].sum() / gesamt) * 100
-    return round(prozent_true, 2)
