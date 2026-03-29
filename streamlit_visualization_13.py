@@ -674,7 +674,7 @@ def lade_sidebar_parameter():
         key="sidebar_time_window"
     )
 
-    use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True, key="sidebar_use_auto_learned")
+    use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=False, key="sidebar_use_auto_learned")
     st.sidebar.subheader("🧠 Strategie-Profil")
     profile = st.sidebar.selectbox(
         "Profil wählen",
