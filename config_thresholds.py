@@ -85,56 +85,59 @@ def _merge(base: Dict[str, Any], override: Dict[str, Any]) -> None:
             base[k] = v
 
 # --- Strategie-Profile (relative Offsets, NICHT persistent) ---
+
 PROFILES = {
-    # ✅ Baseline – aktueller Algorithmus
-    "Conservative": {
-        "ENTRY": {
-            "rsi_thr": 35,
-            "bb_pos_thr": 0.20,
-            "require_hist_rising": False,
-            "entry_window_days": 4,
-        },
-        "CONFIDENCE": {
-            "validation_bonus": 15,
-            "erosion_penalty": 8,
-            "erosion_margin": 5,
-        }
+  "Conservative": {
+    "ENTRY": {
+      "rsi_thr": 35,
+      "bb_pos_thr": 0.20,
+      "require_hist_rising": False,
+      "entry_window_days": 4
     },
+    "CONFIDENCE": {
+      "validation_bonus": 15,
+      "erosion_penalty": 8,
+      "erosion_margin": 5
+    }
+  },
 
-    # 🟡 moderat gelockert
-    "Balanced": {
-        "RSI": {"trend_bias": -6},
-        "ADX": {"strong_trend": -2},
-        "ENTRY": {
-            "rsi_thr": 38,
-            "bb_pos_thr": 0.25,
-            "require_hist_rising": False,
-            "entry_window_days": 5,
-        },
-        "CONFIDENCE": {
-            "validation_bonus": 18,
-            "erosion_penalty": 6,
-            "erosion_margin": 6,
-        }
-    },
+  "Balanced": {
+    # deine bisherigen Offsets kannst du behalten – werden vom Legacy apply_profile genutzt
+    "RSI": {"trend_bias": -6},
+    "ADX": {"strong_trend": -2},
 
-    # 🔴 klar aggressiver
-    "Aggressive": {
-        "RSI": {"trend_bias": -10},
-        "ADX": {"strong_trend": -4},
-        "ENTRY": {
-            "rsi_thr": 40,
-            "bb_pos_thr": 0.30,
-            "require_hist_rising": False,
-            "entry_window_days": 6,
-        },
-        "CONFIDENCE": {
-            "validation_bonus": 22,
-            "erosion_penalty": 4,
-            "erosion_margin": 7,
-        }
+    # NEU: V2 absolute Werte
+    "ENTRY": {
+      "rsi_thr": 38,
+      "bb_pos_thr": 0.25,
+      "require_hist_rising": False,
+      "entry_window_days": 5
     },
+    "CONFIDENCE": {
+      "validation_bonus": 18,
+      "erosion_penalty": 6,
+      "erosion_margin": 6
+    }
+  },
+
+  "Aggressive": {
+    "RSI": {"trend_bias": -10},
+    "ADX": {"strong_trend": -4},
+
+    "ENTRY": {
+      "rsi_thr": 40,
+      "bb_pos_thr": 0.30,
+      "require_hist_rising": False,
+      "entry_window_days": 6
+    },
+    "CONFIDENCE": {
+      "validation_bonus": 22,
+      "erosion_penalty": 4,
+      "erosion_margin": 7
+    }
+  }
 }
+
 
 def _clamp(x, lo, hi):
     return max(lo, min(hi, x))
