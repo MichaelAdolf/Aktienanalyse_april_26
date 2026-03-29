@@ -55,8 +55,6 @@ class RuleEngineV2:
             learned=self.learned,
             active_profile=getattr(self.policy, "active_profile", "Conservative"),
         )
-        if resolved:
-                params.update(resolved)
         rsi_thr = float(params.get('rsi_thr', 35))
         bb_pos_thr = float(params.get('bb_pos_thr', 0.20))
         require_hist_rising = bool(params.get('require_hist_rising', False))
