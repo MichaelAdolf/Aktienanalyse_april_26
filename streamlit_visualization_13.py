@@ -12,7 +12,6 @@ from signals_generation import (
 from trading_v2.rule_engine import (
     RuleEngineV2,
     build_features,
-    write_daily_log,
     optimize_symbol_wfo, 
     write_learned, 
     write_report,
