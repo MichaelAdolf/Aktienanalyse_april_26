@@ -13,7 +13,7 @@ from trading_v2.rule_engine import RuleEngineV2
 from trading_v2.features import build_features
 from trading_v2.telemetry import write_daily_log
 from trading_v2.wfo_optimizer import (optimize_symbol_wfo, write_learned, write_report)
-from trading_v2.config_loader import load_global
+from trading_v2.config_loader import load_global, load_learned, load_ui_policy, resolve_params
 
 from SwingtradingSignale import(
     RSIAnalysis,
@@ -51,9 +51,17 @@ from config_thresholds import (
 def go_to(page_name):
     st.session_state.page = page_name
 
+
 @st.cache_resource
-def get_rule_engine():
-    return RuleEngineV2()
+def get_rule_engine(active_profile: str, use_auto: bool):
+    eng = RuleEngineV2()
+    # Profil in Engine-Konfig setzen (wirkt in resolve_params über global_cfg)
+    eng.global_cfg["active_profile"] = active_profile
+    # Auto-learned AUS -> learned dict leer machen (damit nichts gemerged wird)
+    if not use_auto:
+        eng.learned = {}
+    return eng
+
 
 
 def render_interp(interp: dict):
@@ -196,7 +204,16 @@ def aktienseite():
     # ---------------------------------------------------------  
     tage, min_veraenderung, Auswertung_tage = lade_sidebar_parameter()
     use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True)
-        
+    st.sidebar.subheader("🧠 Strategie-Profil")
+    profile = st.sidebar.selectbox(
+        "Profil wählen",
+        ["Conservative", "Balanced", "Aggressive"],
+        index=0
+    )
+    # für Home-Seite Ampel-Rendering merken
+    st.session_state["active_profile"] = profile
+    st.session_state["use_auto"] = use_auto
+    
     # ---------------------------------------------------------
     # Laden aller Daten der letzten 4 jahre für weitere 
     # grundlegende Berechnungen und Anzeigen
@@ -205,7 +222,7 @@ def aktienseite():
     try:
         data_full = lade_daten_aktie(symbol, period=max_period)
         data_full = berechne_indikatoren(data_full)
-        engine = get_rule_engine()
+        engine = get_rule_engine(profile, use_auto)
         decision_v2 = engine.evaluate(symbol, data_full)
     except Exception as e:
         st.error(f"Fehler beim Laden der Daten: {e}")
@@ -340,6 +357,7 @@ def aktienseite():
                             st.json(params)
                             st.info(f"Report gespeichert: {rep_path}")
                             st.cache_data.clear()
+                            st.cache_resource.clear()
                         except Exception as e:
                             st.error(f"WFO fehlgeschlagen: {e}")
 
@@ -422,13 +440,19 @@ def aktienseite():
     # ---------------------------------------------------------
     with tab_qualität:
         with st.container(border=True):
-            zeige_ruleengine_buyperioden_und_trefferquote(
+            zeige_ruleengine_buyperioden_und_trefferquote(                
                 data=data,
                 symbol=symbol,
                 Auswertung_tage=Auswertung_tage,
                 min_veraenderung=min_veraenderung,
-                max_gap_days=5
+                max_gap_days=5,
+                active_profile=profile,
+                use_auto=use_auto
             )
+
+        st.caption(
+            f"Profil: **{active_profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
+        )
 
     # ---------------------------------------------------------
     # TAB CHARTS
@@ -683,25 +707,26 @@ def zeige_swingtrading_signalauswertung(data, service_result):
 import json
 from pathlib import Path
 
-def _load_rule_params(symbol: str, default_rsi=35, default_bb_pos=0.20, default_require_hist_rising=False):
+def _load_rule_params(symbol: str, active_profile: str = "Conservative", use_auto: bool = True) -> dict:
     """
-    Lädt Parameter aus config/learned_params.json (falls vorhanden),
-    sonst Defaults. Format:
-    { "AAPL": {"rsi_thr": 39, "bb_pos_thr": 0.20, "require_hist_rising": true}, ... }
+    Liefert die AKTIVEN Entry-Parameter für RuleEngineV2 (profil- & learned-abhängig).
+    Wichtig: use_auto=False => learned params werden nicht angewandt.
     """
-    p = Path("config") / "learned_params.json"
-    params = {"rsi_thr": default_rsi, "bb_pos_thr": default_bb_pos, "require_hist_rising": default_require_hist_rising}
-    try:
-        if p.exists():
-            raw = json.loads(p.read_text(encoding="utf-8"))
-            if isinstance(raw, dict) and symbol in raw and isinstance(raw[symbol], dict):
-                for k in ["rsi_thr", "bb_pos_thr", "require_hist_rising"]:
-                    if k in raw[symbol]:
-                        params[k] = raw[symbol][k]
-    except Exception:
-        pass
-    return params
+    global_cfg = load_global()
+    policy = load_ui_policy()
 
+    # Profil sicher setzen
+    global_cfg["active_profile"] = active_profile
+
+    # Learned nur wenn use_auto aktiv
+    learned = load_learned() if use_auto else {}
+
+    # Mode aus Policy übernehmen (damit meta/rules_wfo_meta konsistent bleibt),
+    # aber learned bleibt leer, wenn use_auto=False
+    mode = policy.mode
+
+    params = resolve_params(symbol, mode, global_cfg, learned)
+    return params
 
 def _ruleengine_buy_days(data: pd.DataFrame, rsi_thr: float, bb_pos_thr: float, require_hist_rising: bool):
     """
@@ -823,13 +848,14 @@ def _evaluate_periods(periods, data: pd.DataFrame, Auswertung_tage: int, min_ver
 
     return pd.DataFrame(rows)
 
-
 def zeige_ruleengine_buyperioden_und_trefferquote(
     data: pd.DataFrame,
     symbol: str,
     Auswertung_tage: int,
     min_veraenderung: float,
-    max_gap_days: int = 5
+    max_gap_days: int = 5,
+    active_profile: str = "Conservative",
+    use_auto: bool = True,
 ):
     """
     UI-Funktion:
@@ -838,7 +864,7 @@ def zeige_ruleengine_buyperioden_und_trefferquote(
     - bewertet Perioden ab End-Datum (max Kurs in Auswertung_tage)
     - zeigt Trefferquote + Tabellen + optional Chart-Markierung (über plot_priodenchart)
     """
-    params = _load_rule_params(symbol)
+    params = _load_rule_params(symbol, active_profile=active_profile, use_auto=use_auto)
     buy_dates = _ruleengine_buy_days(
         data,
         rsi_thr=params["rsi_thr"],
@@ -847,7 +873,9 @@ def zeige_ruleengine_buyperioden_und_trefferquote(
     )
 
     st.subheader("🟦 RuleEngine-Entry (BUY) – Perioden & Trefferquote")
-
+    st.caption(
+        f"Profil: **{active_profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
+    )
     st.caption(
         f"Entry-Regeln: RSI≤{params['rsi_thr']}, bb_pos≤{params['bb_pos_thr']} (oder Close≤BB_Lower), MACD_Hist<0"
         + (", hist_rising erforderlich" if params["require_hist_rising"] else "")
