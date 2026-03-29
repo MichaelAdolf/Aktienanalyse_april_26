@@ -413,7 +413,7 @@ def aktienseite():
             )
 
         st.caption(
-            f"Profil: **{active_profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
+            f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
         )
 
     # ---------------------------------------------------------
