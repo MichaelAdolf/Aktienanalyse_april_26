@@ -370,6 +370,7 @@ def aktienseite():
                 with st.expander("ℹ️ Erläuterung zum fundamentalen Unternehmensumfeld"):
                     st.write(
                         erklaere_fundamentales_umfeld(data_fund)
+                    )
 
         # --- 2️⃣ RECHTE SPALTE ---
         with col2:
