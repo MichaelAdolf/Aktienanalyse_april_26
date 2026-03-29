@@ -1,5 +1,6 @@
 {
   "mode": "rules_wfo_meta",
+  "active_profile": "Conservative",
   "meta": {
     "enabled": true,
     "threshold": 0.62,
