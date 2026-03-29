@@ -44,11 +44,14 @@ from core_magic_3 import (
     save_watchlist_json
 )
 
+
+# 🔥 TEMPORÄR – Cache hart invalidieren
+st.cache_data.clear()
+st.cache_resource.clear()
+
 def go_to(page_name):
     st.session_state.page = page_name
 
-
-@st.cache_resource
 def get_rule_engine(active_profile: str, use_auto: bool):
     eng = RuleEngineV2()
     # Profil in Engine-Konfig setzen (wirkt in resolve_params über global_cfg)
@@ -703,32 +706,21 @@ def zeige_swingtrading_signalauswertung(data, service_result):
 import json
 from pathlib import Path
 
-def _load_rule_params(symbol: str, active_profile: str = "Conservative", use_auto: bool = True) -> dict:
-    """
-    Liefert die AKTIVEN Entry-Parameter für RuleEngineV2 (profil- & learned-abhängig).
-    Wichtig: use_auto=False => learned params werden nicht angewandt.
-    """
+
+def _load_rule_params(symbol, active_profile, use_auto):
     global_cfg = load_global()
     policy = load_ui_policy()
 
-    # Profil sicher setzen
     global_cfg["active_profile"] = active_profile
-
-    # Learned nur wenn use_auto aktiv
     learned = load_learned() if use_auto else {}
 
-    # Mode aus Policy übernehmen (damit meta/rules_wfo_meta konsistent bleibt),
-    # aber learned bleibt leer, wenn use_auto=False
-    mode = policy.mode
-
-    params = resolve_params(
+    return resolve_params(
         symbol=symbol,
         mode=policy.mode,
         global_cfg=global_cfg,
         learned=learned,
-        active_profile=active_profile
+        active_profile=active_profile,
     )
-    return params
 
 def _ruleengine_buy_days(data: pd.DataFrame, rsi_thr: float, bb_pos_thr: float, require_hist_rising: bool):
     """
