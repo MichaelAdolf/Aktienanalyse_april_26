@@ -246,10 +246,11 @@ def aktienseite():
 
     # ---------------------------------------------------------
     rsi_analysis = RSIAnalysis()
-    macd_analysis = MACDAnalysis()  # unverändert
+    macd_analysis = MACDAnalysis()
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
     stochastic_analysis = StochasticAnalysis()
+    adx_analysis = ADXAnalysis()
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
 
@@ -278,6 +279,10 @@ def aktienseite():
     ma_result = ma_analysis.analyse(data)
     bollinger_result = bollinger_analysis.analyze(data)
     stochastic_result = stochastic_analysis.analyze(data)
+    stoch_interp = stochastics_result["interpretation"]
+    adx_result = adx_analysis.analyse(data)
+    adx_interp = adx_result["interpretation"]
+    
    
     # ---------------------------------------------------------
     # Überschrift der Aktienseite
@@ -477,7 +482,8 @@ def aktienseite():
                 # Stochastic Oscillator Chart
                 st.subheader("Stochastics Analyse")
                 indikatoren_diagram.plot_stoch(data, symbol)
-                render_interp(stochastic_result["interpretation"])
+                st.markdown(f"### Sochastics Analyse – {stoch_interp.get('headline', '')}")
+                render_interp(stoch_interp)
         
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
@@ -486,7 +492,8 @@ def aktienseite():
             with st.container(border=True):
                 st.subheader("ADX Analyse")
                 indikatoren_diagram.plot_adx(data, symbol)
-                st.markdown(f"### ADX Analyse – {macd_interp.get('headline', '')}")
+                st.markdown(f"### ADX Analyse – {adx_interp.get('headline', '')}")
+                render_interp(adx_interp)
                 
     with tab_ichimoku:
         # ---------------------------------------------------------
