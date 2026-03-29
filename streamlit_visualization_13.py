@@ -440,26 +440,7 @@ def aktienseite():
                 elif decision_v2.signal == "SELL":
                     st.error("❌ SELL – Exit Transition")
                 else:
-                    st.info("⏸ HOLD – kein Transition‑Tag")
-        
-        col1, col2 = st.columns([1,1])
-        with col1:
-            with st.container(border=True):
-                st.markdown(f"### Markt Analyse – {market_result["interpretation_short"]}")
-                market_text = (f"Regime: {market_result["market_regime"]}\n" f"Bias: {market_result["trade_bias"]}")
-                st.text_area("Markt Interpretation", market_text, key=f"market_interpretation_{name}")
-                st.info(f"Zusammenfassung: {market_result['summary']}")
-                st.info(f"Interpretation: {market_result['interpretation_long']}")
-                st.warning(f"Handlungsfazit: {market_result['action_hint']}")
-                st.progress(int(round(market_result["confidence"] * 100)))
-
-        with col2:
-            with st.container(border=True):
-                st.markdown(f"### Eintritt Analyse (Qualität) – {entryquality_result["interpretation_short"]}")
-                st.info(f"Zusammenfassung: {entryquality_result["summary"]}")
-                st.info(f"Interpretation: {entryquality_result["interpretation_long"]}")
-                st.warning(f"Handlungsfazit: {entryquality_result['action_hint']}")
-                st.write(entryquality_result["interpretation"])    
+                    st.info("⏸ HOLD – kein Transition‑Tag")s   
     
     # ---------------------------------------------------------
     # TAB Qualität
