@@ -240,14 +240,6 @@ def aktienseite():
     fundamentaldaten = lade_fundamentaldaten(symbol)
     data_fund = fundamental_alanalyzer.fundamental_analyse(fundamentaldaten, symbol)
     sector = fundamentaldaten.get("sector")  # kann "Unknown" sein
-
-    # ---------------------------------------------------------
-    st.sidebar.subheader("🧠 Strategie-Profil")
-    profile = st.sidebar.selectbox(
-        "Profil wählen",
-        ["Conservative", "Balanced", "Aggressive"],
-        index=0
-    )
     
     # global verfügbar machen
     global_cfg = load_global()
@@ -570,7 +562,7 @@ def aktienseite():
 # Sidebar: Parameter laden
 # ------------------------------
 def lade_sidebar_parameter():
-    zeitraum = st.sidebar.selectbox("Zeitraum wählen", ["6 Monate", "1 Jahr", "3 Jahre"])
+    zeitraum = st.sidebar.selectbox("Zeitraum wählen", ["6 Monate", "1 Jahr", "3 Jahre"], key="sidebar_time_period")
     period_map = {
         "6 Monate": 180,
         "1 Jahr": 365,
@@ -584,7 +576,8 @@ def lade_sidebar_parameter():
         min_value=0.0,
         max_value=0.3,
         value=0.08,
-        step=0.01
+        step=0.01,
+        key="sidebar_min_veraenderung"
     )
 
     auswertung_tage = st.sidebar.slider(
@@ -592,15 +585,17 @@ def lade_sidebar_parameter():
         min_value=10,
         max_value=200,
         value=61,
-        step=1
+        step=1,
+        key="sidebar_time_window"
     )
 
-    use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True)
+    use_auto = st.sidebar.toggle("Parameter: Auto (learned) verwenden", value=True, key="sidebar_use_auto_learned")
     st.sidebar.subheader("🧠 Strategie-Profil")
     profile = st.sidebar.selectbox(
         "Profil wählen",
         ["Conservative", "Balanced", "Aggressive"],
-        index=0
+        index=0,
+        key="sidebar_strategy_profile"
     )
     
     return tage, min_veraenderung, auswertung_tage, use_auto, profile
