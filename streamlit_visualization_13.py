@@ -246,8 +246,6 @@ def aktienseite():
 
     # ---------------------------------------------------------
     rsi_analysis = RSIAnalysis()
-    rsi_latest = {"value": rsi_result["value"], "label": rsi_result["state"]}
-    rsi_history = rsi_analysis.analyze_history(data)
     macd_analysis = MACDAnalysis()  # unverändert
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
@@ -272,7 +270,8 @@ def aktienseite():
     # Indikatorenauswertung
     # --------------------------------------------------------- 
     rsi_result = rsi_analysis.analyse(data)
-    rsi_hist_result = rsi_analysis.analyze_history(data)
+    rsi_latest = {"value": rsi_result["value"], "label": rsi_result["state"]}
+    rsi_history = rsi_analysis.analyze_history(data)
     macd_result = macd_analysis.analyse(data)
     macd_interp = macd_result["interpretation"]
     ma_result = ma_analysis.analyse(data)
