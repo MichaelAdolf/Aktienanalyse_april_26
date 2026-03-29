@@ -6,16 +6,18 @@ import json
 from pathlib import Path
 from signals_generation import (
     FundamentalAnalysis,
-    Analystenbewertung,
-    SwingTrading,
-    PeriodAnalysis
+    Analystenbewertung
 )
 
-from trading_v2.rule_engine import RuleEngineV2
-from trading_v2.features import build_features
-from trading_v2.telemetry import write_daily_log
-from trading_v2.wfo_optimizer import (optimize_symbol_wfo, write_learned, write_report)
-from trading_v2.config_loader import load_global
+from trading_v2.rule_engine import (
+    RuleEngineV2,
+    build_features,
+    write_daily_log,
+    optimize_symbol_wfo, 
+    write_learned, 
+    write_report,
+    load_global
+)
 
 from SwingtradingSignale import(
     RSIAnalysis,
@@ -23,12 +25,7 @@ from SwingtradingSignale import(
     ADXAnalysis,
     MAAnalysis,
     BollingerAnalysis,
-    StochasticAnalysis,
-    ATRQualityAnalysis,
-    MarketRegimeAnalysis,
-    EntryQualityAnalysis,
-    SwingSignalService,
-    STRATEGY_RULES
+    StochasticAnalysis
 )
 
 from views import(
@@ -228,10 +225,7 @@ def aktienseite():
     fundamental_alanalyzer = FundamentalAnalysis()
     main_analyzer = MainDataAnalyzer(data)
     Ichimoku_analyzer = IchimokuAnalyer()
-    Swingtrading = SwingTrading()
     Analysten = Analystenbewertung()
-    period_analyzer = PeriodAnalysis()
-
 
     # ---------------------------------------------------------
     # Laden und Analysieren der Fundamentaldaten
@@ -272,9 +266,7 @@ def aktienseite():
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
     stochastic_analysis = StochasticAnalysis()
-    market_analysis = MarketRegimeAnalysis()
     atr_analysis = ATRQualityAnalysis()
-    entryquality_analysis = EntryQualityAnalysis()
     indikatoren_boards = indikatoren_databoards()
     indikatoren_diagram = indikatoren_plot()
 
@@ -304,15 +296,6 @@ def aktienseite():
     ma_result = ma_analysis.analyse(data)
     bollinger_result = bollinger_analysis.analyze(data)
     stochastic_result = stochastic_analysis.analyze(data)
-    atr_14 = atr_analysis.calculate_atr(data)
-    # Analyse für den letzten Kurs
-    atr_result = atr_analysis.analyse(
-        current_price = data["Close"].iloc[-1],
-        atr = data["ATR"].iloc[-1],
-        ma50 = data["MA50"].iloc[-1],
-        ma10 = data["MA10"].iloc[-1]
-    )
-
     rsi_result["trend_bias"] = thresholds["RSI"]["trend_bias"]
 
    
