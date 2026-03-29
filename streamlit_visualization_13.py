@@ -721,7 +721,13 @@ def _load_rule_params(symbol: str, active_profile: str = "Conservative", use_aut
     # aber learned bleibt leer, wenn use_auto=False
     mode = policy.mode
 
-    params = resolve_params(symbol, mode, global_cfg, learned)
+    params = resolve_params(
+        symbol=symbol,
+        mode=policy.mode,
+        global_cfg=global_cfg,
+        learned=learned,
+        active_profile=active_profile
+    )
     return params
 
 def _ruleengine_buy_days(data: pd.DataFrame, rsi_thr: float, bb_pos_thr: float, require_hist_rising: bool):
