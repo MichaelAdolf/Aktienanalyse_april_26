@@ -245,6 +245,7 @@ def aktienseite():
     global_cfg["active_profile"] = profile
 
     # ---------------------------------------------------------
+    rsi_analyse = RSIAnalysis(data)
     macd_analysis = MACDAnalysis()  # unverändert
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
