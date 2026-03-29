@@ -248,8 +248,6 @@ def aktienseite():
     sector = fundamentaldaten.get("sector")  # kann "Unknown" sein
 
     # ---------------------------------------------------------
-
-    thresholds = get_thresholds(symbol if use_auto else None, sector)  # learned aus/an
     st.sidebar.subheader("🧠 Strategie-Profil")
     profile = st.sidebar.selectbox(
         "Profil wählen",
@@ -262,20 +260,7 @@ def aktienseite():
     global_cfg["active_profile"] = profile
 
     # ---------------------------------------------------------
-    
-    rsi_analysis = RSIAnalysis(
-        oversold=thresholds["RSI"]["oversold"],
-        overbought=thresholds["RSI"]["overbought"],
-        bullish_floor=thresholds["RSI"]["bullish_floor"],
-        bearish_ceiling=thresholds["RSI"]["bearish_ceiling"],
-    )
-
     macd_analysis = MACDAnalysis()  # unverändert
-    adx_analysis = ADXAnalysis(
-        weak_trend=thresholds["ADX"]["weak_trend"],
-        strong_trend=thresholds["ADX"]["strong_trend"],
-        extreme_trend=thresholds["ADX"]["extreme_trend"],
-    )
     ma_analysis = MAAnalysis()
     bollinger_analysis = BollingerAnalysis()
     stochastic_analysis = StochasticAnalysis()
@@ -299,17 +284,11 @@ def aktienseite():
     # ---------------------------------------------------------
     # Indikatorenauswertung
     # --------------------------------------------------------- 
-    rsi_result = rsi_analysis.analyse(data)
-    rsi_latest = {"value": rsi_result["value"], "label": rsi_result["state"]}
-    rsi_history = rsi_analysis.analyze_history(data)
-    rsi_interp = rsi_result["interpretation"]
     macd_result = macd_analysis.analyse(data)
     macd_interp = macd_result["interpretation"]
-    adx_result = adx_analysis.analyse(data)
     ma_result = ma_analysis.analyse(data)
     bollinger_result = bollinger_analysis.analyze(data)
     stochastic_result = stochastic_analysis.analyze(data)
-    rsi_result["trend_bias"] = thresholds["RSI"]["trend_bias"]
     atr_14 = atr_analysis.calculate_atr(data)
     # Analyse für den letzten Kurs
     atr_result = atr_analysis.analyse(
@@ -408,9 +387,7 @@ def aktienseite():
             with st.container(border=True):   
                 st.subheader("Indikatorenauswertung:")             
                 st.markdown(
-                    f"- **RSI:** {rsi_interp['meaning']}\n"
                     f"- **MACD:** {macd_interp['meaning']}\n"
-                    f"- **ADX:** {adx_result['trend_acceleration']}"
                     )
 
     # ---------------------------------------------------------
@@ -495,11 +472,7 @@ def aktienseite():
         # ---------------------------------------------------------
         with col1:
             with st.container(border=True):
-                indikatoren_boards.rsi_databoard(rsi_latest, rsi_history)
                 indikatoren_diagram.plot_rsi(data, symbol)
-                #rsi_text = (f"Regime: {rsi_result['regime']}\n" f"State: {rsi_result['state']}\n" f"Bias: {rsi_result['bias']}")            
-                st.markdown(f"### RSI – {rsi_interp.get('headline', '')}")
-                render_interp(rsi_interp)
         # ---------------------------------------------------------
         # 2️⃣ RECHTE SPALTE
         # ---------------------------------------------------------
@@ -531,7 +504,6 @@ def aktienseite():
                 st.subheader("ADX Analyse")
                 indikatoren_diagram.plot_adx(data, symbol)
                 st.markdown(f"### ADX Analyse – {macd_interp.get('headline', '')}")
-                render_interp(adx_result["interpretation"])
                 
     with tab_ichimoku:
         # ---------------------------------------------------------
@@ -598,8 +570,7 @@ def aktienseite():
             st.dataframe(df_export.head(20))
                 
     with Algorithmus:
-        with st.expander("Aktive Parameter (nach Merge)"):
-            st.json(thresholds)      
+         st.subheader("Aktuell Platzhalter")   
 
 # ------------------------------
 # Sidebar: Parameter laden
