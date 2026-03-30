@@ -160,7 +160,10 @@ def home_page():
             # 1) Trading-Signal (entscheidend!)
             # ---------------------------------
             try:
-                engine = get_rule_engine()
+                engine = get_rule_engine(
+                    st.session_state.get("active_profile", "Conservative"),
+                    st.session_state.get("use_auto", False),
+                )
         
                 data_raw = lade_daten_aktie(symbol, period="6mo")
                 data_raw = berechne_indikatoren(data_raw)
@@ -177,7 +180,7 @@ def home_page():
                 
                 data = data_raw.dropna(subset=required_cols)
                 
-                if len(data) < 50:
+                if len(data) < 5:
                     raise ValueError("Nicht genügend valide Daten für Signalberechnung")
                 
                 decision = engine.evaluate(symbol, data)
