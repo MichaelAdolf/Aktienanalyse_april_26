@@ -162,9 +162,24 @@ def home_page():
             try:
                 engine = get_rule_engine()
         
-                data = lade_daten_aktie(symbol, period="6mo")
-                data = berechne_indikatoren(data)
-        
+                data_raw = lade_daten_aktie(symbol, period="6mo")
+                data_raw = berechne_indikatoren(data_raw)
+                
+                # nur valide Handelstage verwenden
+                required_cols = [
+                    "RSI",
+                    "MACD_Hist",
+                    "ADX",
+                    "ATR",
+                    "BB_Upper",
+                    "BB_Lower",
+                ]
+                
+                data = data_raw.dropna(subset=required_cols)
+                
+                if len(data_valid) < 50:
+                    raise ValueError("Nicht genügend valide Daten für Signalberechnung")
+                
                 decision = engine.evaluate(symbol, data)
                 status = decision.signal
         
@@ -176,12 +191,12 @@ def home_page():
                 else:
                     st.markdown("<h3 style='text-align:center;'>🟡</h3>", unsafe_allow_html=True)
         
-            except Exception as e:
-                # ⚠️ NUR wenn das Signal selbst nicht berechnet werden kann
+            
+            except ValueError:
+                st.markdown("<h3 style='text-align:center;'>⏸️</h3>", unsafe_allow_html=True)
+            except Exception:
                 st.markdown("<h3 style='text-align:center;'>⚠️</h3>", unsafe_allow_html=True)
-                # optional zum Debuggen:
-                # st.write(f"Signal-Fehler {symbol}: {type(e).__name__} – {e}")
-                decision = None
+
 
 def aktienseite(): 
     name, symbol = st.session_state.page
