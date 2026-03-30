@@ -36,4 +36,4 @@ jobs:
           MIN_CHANGE: "0.08"
           MAX_GAP_DAYS: "5"
         run: |
-          python dailymail_v2.py
+          python dailymail.py
