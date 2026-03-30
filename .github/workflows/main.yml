@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance pandas numpy pytz streamlit plotly
+          pip install yfinance pandas numpy pytz streamlit plotly ta
 
       - name: Run daily mail
         env:
