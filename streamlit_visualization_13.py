@@ -61,8 +61,6 @@ def get_rule_engine(active_profile: str, use_auto: bool):
         eng.learned = {}
     return eng
 
-
-
 def render_interp(interp: dict):
     """
     Rendert Interpretation (headline/meaning/status/level) rein als UI.
@@ -81,7 +79,6 @@ def render_interp(interp: dict):
         st.info(meaning)
     else:
         st.caption(meaning)
-
 
 def home_page():
     watchlist = lade_aktien()
@@ -155,7 +152,6 @@ def home_page():
                 st.session_state.page = (name, symbol)
     
         with col_signal:
-        
             # ---------------------------------
             # 1) Trading-Signal (entscheidend!)
             # ---------------------------------
@@ -167,7 +163,6 @@ def home_page():
         
                 data_raw = lade_daten_aktie(symbol, period="6mo")
                 data_raw = berechne_indikatoren(data_raw)
-                
                 # nur valide Handelstage verwenden
                 required_cols = [
                     "RSI",
@@ -401,21 +396,54 @@ def aktienseite():
     # ---------------------------------------------------------
     with tab_handel:
         with st.container(border=True):
-                st.markdown("## 🧠 Handelsentscheidung (RuleEngineV2)")
-                st.write(f"**Signal:** {decision_v2.signal}")
-                st.write(f"**State:** {decision_v2.state}")
-                st.write(f"**Confidence:** {decision_v2.confidence:.2f}")
-                st.write("**Reasons:** " + ", ".join(decision_v2.reasons))
+                st.markdown("## 🧠 Handelsentscheidung (RuleEngineV2)")        
+                with st.container(border=True):
+                    if decision_v2.signal == "BUY":
+                        st.success("✅ BUY – Einstiegssignal")
+                    elif decision_v2.signal == "SELL":
+                        st.error("❌ SELL – Ausstiegssignal")
+                    else:
+                        st.info("⏸ HOLD – keine Aktion")
         
-                if decision_v2.meta:
-                    st.write("**Meta‑Decision:**")
-                    st.json(decision_v2.meta)
-                if decision_v2.signal == "BUY":
-                    st.success("✅ BUY – Entry Transition")
-                elif decision_v2.signal == "SELL":
-                    st.error("❌ SELL – Exit Transition")
-                else:
-                    st.info("⏸ HOLD – kein Transition‑Tag")
+                    st.markdown("### 🧠 Entscheidungsdetails")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Signal", decision_v2.signal)
+                        st.metric("State", decision_v2.state)
+                    
+                    with col2:
+                        st.metric("Confidence", f"{decision_v2.confidence:.2f}")
+
+                    st.markdown("### ✅ Auslösende Regeln")
+                    if decision_v2.reasons:
+                        for r in decision_v2.reasons:
+                            st.markdown(f"- ✔️ {r}")
+                    else:
+                        st.caption("Keine expliziten Regeln ausgelöst.")
+
+                    with st.expander("🔍 Erweiterte Details (Regeln & Indikatoren)"):
+                        if decision_v2.meta:
+                            st.markdown("**Meta‑Informationen**")
+                            st.json(decision_v2.meta)
+                        st.markdown("**Aktive Entry‑Parameter**")
+                        active_params = _load_rule_params(
+                            symbol,
+                            active_profile=profile,
+                            use_auto=use_auto
+                        )
+                        st.json(active_params)
+                        st.markdown("**Feature‑Snapshot (letzter Handelstag)**")
+                        try:
+                            feat = build_features(data)
+                            st.json({
+                                "RSI": round(feat.get("rsi", float("nan")), 2),
+                                "MACD_Hist": round(feat.get("macd_hist", float("nan")), 4),
+                                "BB_Position": round(feat.get("bb_pos", float("nan")), 3),
+                                "ADX": round(feat.get("adx", float("nan")), 2),
+                                "Close": round(feat.get("close", float("nan")), 2),
+                            })
+                        except Exception:
+                            st.caption("Feature‑Snapshot aktuell nicht verfügbar.")
     
     # ---------------------------------------------------------
     # TAB Qualität
