@@ -177,7 +177,7 @@ def home_page():
                 
                 data = data_raw.dropna(subset=required_cols)
                 
-                if len(data_valid) < 50:
+                if len(data) < 50:
                     raise ValueError("Nicht genügend valide Daten für Signalberechnung")
                 
                 decision = engine.evaluate(symbol, data)
