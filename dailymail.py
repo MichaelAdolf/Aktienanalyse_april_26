@@ -1,5 +1,5 @@
 from __future__ import annotations
-pip install yfinance pandas numpy pytz streamlit
+
 import json
 import os
 import smtplib
