@@ -5,8 +5,7 @@ on:
     # GitHub Actions läuft in UTC.
     # Wir triggern 04:00 und 05:00 UTC an Werktagen und lassen das Script nur senden,
     # wenn es lokal in Europe/Berlin wirklich 06:xx ist (DST-sicher).
-    - cron: "0 4 * * 1-5"
-    - cron: "0 5 * * 1-5"
+    - cron: "*/30 3-7 * * 1-5"
   workflow_dispatch: {}
 
 jobs:
