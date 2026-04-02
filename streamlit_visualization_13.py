@@ -152,9 +152,14 @@ def home_page():
                 st.session_state.page = (name, symbol)
     
         with col_signal:
-            # ---------------------------------
-            # 1) Trading-Signal (entscheidend!)
-            # ---------------------------------
+            def _icon_with_tooltip(icon: str, tip: str) -> None:
+                st.markdown(
+                    f"<div title='{tip}' style='text-align:center; font-size: 28px; line-height: 1;'>"
+                    f"{icon}"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+        
             try:
                 engine = get_rule_engine(
                     st.session_state.get("active_profile", "Conservative"),
@@ -163,37 +168,30 @@ def home_page():
         
                 data_raw = lade_daten_aktie(symbol, period="6mo")
                 data_raw = berechne_indikatoren(data_raw)
-                # nur valide Handelstage verwenden
-                required_cols = [
-                    "RSI",
-                    "MACD_Hist",
-                    "ADX",
-                    "ATR",
-                    "BB_Upper",
-                    "BB_Lower",
-                ]
-                
+        
+                required_cols = ["RSI", "MACD_Hist", "ADX", "ATR", "BB_Upper", "BB_Lower"]
                 data = data_raw.dropna(subset=required_cols)
-                
-                if len(data) < 5:
-                    raise ValueError("Nicht genügend valide Daten für Signalberechnung")
-                
+        
+                if data.empty:
+                    raise ValueError("Keine valide Zeile für Signal")
+        
+                last_status_date = data.index[-1].date()
+                tooltip = f"Status basierend auf Schlusskurs: {last_status_date}"
+        
                 decision = engine.evaluate(symbol, data)
                 status = decision.signal
         
-                # Ampel
                 if status == "BUY":
-                    st.markdown("<h3 style='text-align:center;'>🟢</h3>", unsafe_allow_html=True)
+                    _icon_with_tooltip("🟢", tooltip)
                 elif status == "SELL":
-                    st.markdown("<h3 style='text-align:center;'>🔴</h3>", unsafe_allow_html=True)
+                    _icon_with_tooltip("🔴", tooltip)
                 else:
-                    st.markdown("<h3 style='text-align:center;'>🟡</h3>", unsafe_allow_html=True)
+                    _icon_with_tooltip("🟡", tooltip)
         
-            
             except ValueError:
-                st.markdown("<h3 style='text-align:center;'>⏸️</h3>", unsafe_allow_html=True)
+                _icon_with_tooltip("⏸️", "Kein valider Bewertungstag (zu wenig valide Kurs-/Indikatordaten)")
             except Exception:
-                st.markdown("<h3 style='text-align:center;'>⚠️</h3>", unsafe_allow_html=True)
+                _icon_with_tooltip("⚠️", "Fehler bei der Signalberechnung – Details im Log")
 
 
 def aktienseite(): 
