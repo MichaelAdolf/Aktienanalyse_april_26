@@ -322,5 +322,33 @@
   {
     "name": "Reliance Industries Limited",
     "symbol": "RELIANCE.NS"
+  },
+  {
+    "name": "Vanguard Total World Stock ETF",
+    "symbol": "VT"
+  },
+  {
+    "name": "Vanguard Total International Stock ETF",
+    "symbol": "VXUS"
+  },
+  {
+    "name": "iShares Core MSCI Emerging Markets ETF",
+    "symbol": "IEMG"
+  },
+  {
+    "name": "Vanguard FTSE Emerging Markets ETF",
+    "symbol": "VWO"
+  },
+  {
+    "name": "VanEck Semiconductor ETF",
+    "symbol": "SMH"
+  },
+  {
+    "name": "Vanguard Information Technology ETF",
+    "symbol": "VGT"
+  },
+  {
+    "name": "Global X Robotics & Artificial Intelligence ETF",
+    "symbol": "BOTZ"
   }
 ]
