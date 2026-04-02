@@ -299,4 +299,28 @@
     "name": "Regeneron",
     "symbol": "REGN"
   } 
+  {
+    "name": "Taiwan Semiconductor Manufacturing Company",
+    "symbol": "TSM"
+  },
+  {
+    "name": "Berkshire Hathaway Inc. Class B",
+    "symbol": "BRK.B"
+  },
+  {
+    "name": "UnitedHealth Group Incorporated",
+    "symbol": "UNH"
+  },
+  {
+    "name": "LVMH Moët Hennessy Louis Vuitton SE",
+    "symbol": "MC.PA"
+  },
+  {
+    "name": "MercadoLibre Inc.",
+    "symbol": "MELI"
+  },
+  {
+    "name": "Reliance Industries Limited",
+    "symbol": "RELIANCE.NS"
+  }
 ]
