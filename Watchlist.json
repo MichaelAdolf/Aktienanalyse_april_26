@@ -350,5 +350,29 @@
   {
     "name": "Global X Robotics & Artificial Intelligence ETF",
     "symbol": "BOTZ"
+  },
+  {
+    "name": "Nebius Group N.V.",
+    "symbol": "NBIS"
+  },
+  {
+    "name": "ServiceTitan Inc.",
+    "symbol": "TTAN"
+  },
+  {
+    "name": "The Trade Desk, Inc.",
+    "symbol": "TTD"
+  },
+  {
+    "name": "Applied Optoelectronics, Inc.",
+    "symbol": "AAOI"
+  },
+  {
+    "name": "DLocal Limited",
+    "symbol": "DLO"
+  },
+  {
+    "name": "Magnite, Inc.",
+    "symbol": "MGNI"
   }
 ]
