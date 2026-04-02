@@ -29,7 +29,7 @@ jobs:
         env:
           # Script-Optionen
           LOCAL_TZ: Europe/Berlin
-          ENFORCE_6AM_LOCAL: "0"
+          ENFORCE_6AM_LOCAL: "1"
           AUTO_LEARNED: "1"
           EVAL_DAYS: "61"
           MIN_CHANGE: "0.08"
