@@ -50,14 +50,20 @@ LOCAL_TZ = os.getenv("LOCAL_TZ", "Europe/Berlin")
 # ----------------------------
 # Helper: Zeitfenster Mo-Fr 06:00 lokal
 # ----------------------------
-def should_send_now() -> bool:
-    tz = pytz.timezone(LOCAL_TZ)
+
+def should_send_now():
+    tz = pytz.timezone("Europe/Berlin")
     now = datetime.now(tz)
-    # Mo=0 .. So=6
+
+    # nur Montag–Freitag
     if now.weekday() > 4:
         return False
-    return now.hour == 6
 
+    # nur zwischen 06:00 und 06:59
+    if now.hour != 6:
+        return False
+
+    return True
 
 # ----------------------------
 # Helper: Validierung Daten (letzte gültige Zeilen)
