@@ -348,45 +348,45 @@ def aktienseite():
                     st.info("⏸ HOLD – kein Trade")
 
         
-ith st.container(border=True):
-    st.subheader("📰 Marktstimmung (News)")
-
-    sentiment = lade_aktien_stimmung(symbol, days=7, limit=12)
-
-    s = sentiment.get("sentiment", "NEUTRAL")
-    expl = sentiment.get("explanation", "")
-    as_of = sentiment.get("as_of", "")
-    contexts = sentiment.get("contexts", [])
-
-    if s == "POSITIV":
-        st.success(f"🟢 Positiv (Stand: {as_of})")
-    elif s == "NEGATIV":
-        st.error(f"🔴 Negativ (Stand: {as_of})")
-    else:
-        st.info(f"🟡 Neutral (Stand: {as_of})")
-
-    st.caption(expl)
-    st.caption("Hinweis: Rein informativ – hat keinen Einfluss auf Handelssignale.")
-
-    if contexts:
-        with st.expander("🧩 Kontext (automatisch erkannt)"):
-            st.write(", ".join(contexts))
-
-    with st.expander("📄 Verwendete Schlagzeilen"):
-        items = sentiment.get("headlines", [])
-        if not items:
-            st.write("Keine Headlines verfügbar.")
-        else:
-            for it in items:
-                title = it.get("title", "")
-                url = it.get("url", "")
-                src = it.get("source", "")
-                pub = it.get("published_at", "")
-
-                if url:
-                    st.markdown(f"- [{title}]({url})  \n  <small>{src} · {pub}</small>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.subheader("📰 Marktstimmung (News)")
+        
+            sentiment = lade_aktien_stimmung(symbol, days=7, limit=12)
+        
+            s = sentiment.get("sentiment", "NEUTRAL")
+            expl = sentiment.get("explanation", "")
+            as_of = sentiment.get("as_of", "")
+            contexts = sentiment.get("contexts", [])
+        
+            if s == "POSITIV":
+                st.success(f"🟢 Positiv (Stand: {as_of})")
+            elif s == "NEGATIV":
+                st.error(f"🔴 Negativ (Stand: {as_of})")
+            else:
+                st.info(f"🟡 Neutral (Stand: {as_of})")
+        
+            st.caption(expl)
+            st.caption("Hinweis: Rein informativ – hat keinen Einfluss auf Handelssignale.")
+        
+            if contexts:
+                with st.expander("🧩 Kontext (automatisch erkannt)"):
+                    st.write(", ".join(contexts))
+        
+            with st.expander("📄 Verwendete Schlagzeilen"):
+                items = sentiment.get("headlines", [])
+                if not items:
+                    st.write("Keine Headlines verfügbar.")
                 else:
-                    st.markdown(f"- {title}  \n  <small>{src} · {pub}</small>", unsafe_allow_html=True)
+                    for it in items:
+                        title = it.get("title", "")
+                        url = it.get("url", "")
+                        src = it.get("source", "")
+                        pub = it.get("published_at", "")
+        
+                        if url:
+                            st.markdown(f"- [{title}]({url})  \n  <small>{src} · {pub}</small>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"- {title}  \n  <small>{src} · {pub}</small>", unsafe_allow_html=True)
 
     # ---------------------------------------------------------
     # TAB HANDEL
