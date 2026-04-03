@@ -39,6 +39,7 @@ from core_magic_3 import (
     berechne_indikatoren,
     lade_fundamentaldaten,
     erklaere_fundamentales_umfeld,
+    lade_aktien_stimmung,
     klassifiziere_aktie,
     erklaere_kategorien,
     save_watchlist_json
@@ -345,6 +346,48 @@ def aktienseite():
                     st.error("❌ SELL – Exit Transition")
                 else:
                     st.info("⏸ HOLD – kein Trade")
+
+        with st.container(border=True):
+            st.subheader("📰 Marktstimmung (News)")
+        
+            with st.spinner("Lade News-Stimmung ..."):
+                sentiment = lade_aktien_stimmung(symbol, days=7, limit=12)
+        
+            s = sentiment.get("sentiment", "NEUTRAL")
+            expl = sentiment.get("explanation", "")
+            as_of = sentiment.get("as_of", "")
+            pos_hits = sentiment.get("pos_hits", 0)
+            neg_hits = sentiment.get("neg_hits", 0)
+        
+            if s == "POSITIV":
+                st.success(f"🟢 Positiv (Stand: {as_of})")
+            elif s == "NEGATIV":
+                st.error(f"🔴 Negativ (Stand: {as_of})")
+            else:
+                st.info(f"🟡 Neutral (Stand: {as_of})")
+        
+            st.caption(expl)
+            st.caption("Hinweis: Diese Einordnung ist rein informativ und hat keinen Einfluss auf Handelssignale.")
+        
+            with st.expander("📄 Verwendete Schlagzeilen"):
+                items = sentiment.get("headlines", [])
+                if not items:
+                    st.write("Keine Headlines verfügbar.")
+                else:
+                    for it in items:
+                        title = it.get("title", "")
+                        url = it.get("url", "")
+                        src = it.get("source", "")
+                        pub = it.get("published_at", "")
+        
+                        if url:
+                            st.markdown(f"- [{title}]({url})  \n  <small>{src} · {pub}</small>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"- {title}  \n  <small>{src} · {pub}</small>", unsafe_allow_html=True)
+        
+            with st.expander("⚙️ Diagnose (nur zur Kontrolle)"):
+                st.write(f"Positive Treffer: {pos_hits}")
+                st.write(f"Negative Treffer: {neg_hits}")
 
     # ---------------------------------------------------------
     # TAB HANDEL
