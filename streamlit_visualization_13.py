@@ -141,57 +141,14 @@ def home_page():
     st.write("Wähle eine Aktie:")
     
     for i, w in enumerate(watchlist):
-        name = w["name"]
-        symbol = w["symbol"]
-    
-        # Layout: 2-Spalten (Button links, Ampel rechts)
-        col_button, col_signal = st.columns([4, 1])
-    
-        with col_button:
-            if st.button(f"{name} ({symbol})", key=f"button_{symbol}_{i}"):
-                st.session_state.page = (name, symbol)
-    
-        with col_signal:
-            def _icon_with_tooltip(icon: str, tip: str) -> None:
-                st.markdown(
-                    f"<div title='{tip}' style='text-align:center; font-size: 28px; line-height: 1;'>"
-                    f"{icon}"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
-        
-            try:
-                engine = get_rule_engine(
-                    st.session_state.get("active_profile", "Conservative"),
-                    st.session_state.get("use_auto", False),
-                )
-        
-                data_raw = lade_daten_aktie(symbol, period="6mo")
-                data_raw = berechne_indikatoren(data_raw)
-        
-                required_cols = ["RSI", "MACD_Hist", "ADX", "ATR", "BB_Upper", "BB_Lower"]
-                data = data_raw.dropna(subset=required_cols)
-        
-                if data.empty:
-                    raise ValueError("Keine valide Zeile für Signal")
-        
-                last_status_date = data.index[-1].date()
-                tooltip = f"Status basierend auf Schlusskurs: {last_status_date}"
-        
-                decision = engine.evaluate(symbol, data)
-                status = decision.signal
-        
-                if status == "BUY":
-                    _icon_with_tooltip("🟢", tooltip)
-                elif status == "SELL":
-                    _icon_with_tooltip("🔴", tooltip)
-                else:
-                    _icon_with_tooltip("🟡", tooltip)
-        
-            except ValueError:
-                _icon_with_tooltip("⏸️", "Kein valider Bewertungstag (zu wenig valide Kurs-/Indikatordaten)")
-            except Exception:
-                _icon_with_tooltip("⚠️", "Fehler bei der Signalberechnung – Details im Log")
+    name = w["name"]
+    symbol = w["symbol"]
+
+    col_button, _ = st.columns([5, 1])
+
+    with col_button:
+        if st.button(f"{name} ({symbol})", key=f"btn_{symbol}_{i}"):
+            st.session_state.page = (name, symbol)
 
 
 def aktienseite(): 
