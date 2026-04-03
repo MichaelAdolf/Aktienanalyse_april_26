@@ -141,14 +141,14 @@ def home_page():
     st.write("Wähle eine Aktie:")
     
     for i, w in enumerate(watchlist):
-    name = w["name"]
-    symbol = w["symbol"]
-
-    col_button, _ = st.columns([5, 1])
-
-    with col_button:
-        if st.button(f"{name} ({symbol})", key=f"btn_{symbol}_{i}"):
-            st.session_state.page = (name, symbol)
+        name = w["name"]
+        symbol = w["symbol"]
+    
+        col_button, _ = st.columns([5, 1])
+    
+        with col_button:
+            if st.button(f"{name} ({symbol})", key=f"btn_{symbol}_{i}"):
+                st.session_state.page = (name, symbol)
 
 
 def aktienseite(): 
