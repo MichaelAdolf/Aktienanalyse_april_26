@@ -13,11 +13,11 @@ import time
 import os
 import re
 from datetime import datetime, timedelta, timezone
-# requests ist i.d.R. durch yfinance schon vorhanden – fallback ist trotzdem robust
-try:
-    import requests
-except Exception:
-    requests = None
+from email.utils import parsedate_to_datetime
+from urllib.parse import quote_plus
+import urllib.request
+import xml.etree.ElementTree as ET
+
 
 # ------------------------------------------------------
 # Aktien aus der definierten Watchlist laden
@@ -236,8 +236,9 @@ def erklaere_fundamentales_umfeld(fundamentaldaten: dict) -> str:
 
     return "\n\n".join(texte)
 
+
 # ==============================
-# NEWS / STIMMUNGS-ANALYSE (FMP)
+# NEWS / STIMMUNGS-ANALYSE (Google News RSS)
 # ==============================
 
 # Schlüsselwörter: bewusst simpel + erklärbar (DE + EN)
@@ -247,7 +248,7 @@ _POS_WORDS = {
     "partnership", "surge", "rally", "outperform", "raises", "profit",
     # DE
     "stark", "wachstum", "rekord", "genehmigung", "zulassung", "ausbau", "hochgestuft",
-    "kooperation", "partnerschaft", "übertrifft", "gewinn", "steigt", "erhöht"
+    "kooperation", "partnerschaft", "übertrifft", "gewinn", "steigt", "erhöht",
 }
 
 _NEG_WORDS = {
@@ -256,31 +257,21 @@ _NEG_WORDS = {
     "weak", "miss", "misses", "plunge", "fraud", "probe", "recall",
     # DE
     "gewinnwarnung", "herabstufung", "ermittlung", "klage", "rückgang", "senkt",
-    "verlust", "schwach", "verfehlt", "einbruch", "rückruf", "warnung"
+    "verlust", "schwach", "verfehlt", "einbruch", "rückruf", "warnung",
 }
 
-def _get_fmp_key() -> str:
-    """
-    API Key aus Streamlit-Secrets oder ENV.
-    Keine UI-Ausgabe, nur Rückgabe.
-    """
-    try:
-        # Streamlit Secrets (falls vorhanden)
-        return st.secrets.get("FMP_API_KEY", "")  # type: ignore[attr-defined]
-    except Exception:
-        return os.getenv("FMP_API_KEY", "")
 
 def _normalize_text(s: str) -> str:
-    s = s or ""
-    s = s.lower().strip()
-    # einfache Normalisierung (Sonderzeichen raus, Mehrfachspaces)
-    s = re.sub(r"\\s+", " ", s)
+    s = (s or "").lower().strip()
+    s = re.sub(r"\s+", " ", s)
     return s
+
 
 def _classify_headlines(items: list[dict]) -> tuple[str, str, int, int]:
     """
-    Regelbasierte Klassifikation: zählt positive/negative Treffer in Headlines (+ optional description).
-    Rückgabe: (sentiment, explanation, pos_count, neg_count)
+    Regelbasierte Klassifikation:
+    - zählt positive/negative Treffer über Title + Description.
+    Rückgabe: (sentiment, explanation, pos_hits, neg_hits)
     """
     pos = 0
     neg = 0
@@ -288,7 +279,6 @@ def _classify_headlines(items: list[dict]) -> tuple[str, str, int, int]:
     for it in items:
         title = _normalize_text(it.get("title", ""))
         desc = _normalize_text(it.get("description", ""))
-
         text = f"{title} {desc}".strip()
 
         if any(w in text for w in _POS_WORDS):
@@ -296,105 +286,109 @@ def _classify_headlines(items: list[dict]) -> tuple[str, str, int, int]:
         if any(w in text for w in _NEG_WORDS):
             neg += 1
 
-    # Aggregation bewusst simpel
     if neg > pos and neg > 0:
-        return (
-            "NEGATIV",
-            "Mehrere aktuelle Berichte enthalten Warnsignale oder Gegenwind.",
-            pos,
-            neg,
-        )
+        return "NEGATIV", "Mehrere aktuelle Berichte enthalten Warnsignale oder Gegenwind.", pos, neg
     if pos > neg and pos > 0:
-        return (
-            "POSITIV",
-            "Aktuelle Berichte wirken überwiegend konstruktiv bzw. unterstützend.",
-            pos,
-            neg,
-        )
-    return (
-        "NEUTRAL",
-        "Gemischte oder wenig dominante Nachrichtenlage – kein klarer Überhang erkennbar.",
-        pos,
-        neg,
-    )
+        return "POSITIV", "Aktuelle Berichte wirken überwiegend konstruktiv bzw. unterstützend.", pos, neg
+    return "NEUTRAL", "Gemischte oder wenig dominante Nachrichtenlage – kein klarer Überhang erkennbar.", pos, neg
 
-def _fetch_fmp_stock_news(symbol: str, days: int = 7, limit: int = 12) -> list[dict]:
+
+def _fetch_google_news_rss(symbol: str, days: int = 7, limit: int = 12) -> list[dict]:
     """
-    Holt News für ein Symbol über FMP.
-    Primär: /stable/news/stock?symbols=...
-    API-Key als query param (&apikey=...).
-    Gibt Liste von dicts zurück: title, url, published_at, source, description.
+    Holt News-Headlines über Google News RSS (kostenlos, kein API-Key).
+    Wir verwenden den RSS-Suchfeed: https://news.google.com/rss/search?q=...
+    und parsen <item>-Einträge. [1](https://www.wprssaggregator.com/google-news-rss-feed/)
     """
-    api_key = _get_fmp_key()
-    if not api_key:
+    symbol = (symbol or "").strip().upper()
+    if not symbol:
         return []
 
-    symbol = symbol.strip().upper()
+    # Für .DE Ticker: besser "Aktie" statt "stock"
+    base = symbol.split(".")[0]
+    keyword = "Aktie" if symbol.endswith(".DE") else "stock"
 
-    # Endpoint laut FMP Doku: /stable/news/stock?symbols=AAPL [1](https://site.financialmodelingprep.com/developer/docs/stable/search-stock-news)
-    base_url = "https://financialmodelingprep.com/stable/news/stock"
-    url = f"{base_url}?symbols={symbol}&apikey={api_key}"
+    # Query: reduziere Rauschen, erhöhe Treffer für DE/EU
+    # Beispiel: "ALV Aktie" + Symbol
+    query = quote_plus(f"{base} {symbol} {keyword}")
+
+    # Locale (optional via ENV umstellbar)
+    hl = os.getenv("NEWS_RSS_HL", "de")
+    gl = os.getenv("NEWS_RSS_GL", "DE")
+    ceid = os.getenv("NEWS_RSS_CEID", "DE:de")
+
+    url = f"https://news.google.com/rss/search?q={query}&hl={hl}&gl={gl}&ceid={ceid}"
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=int(days))
 
     try:
-        if requests is None:
-            # urllib fallback
-            import urllib.request
-            with urllib.request.urlopen(url, timeout=10) as resp:
-                raw = resp.read().decode("utf-8")
-                data = json.loads(raw)
-        else:
-            r = requests.get(url, timeout=10)
-            r.raise_for_status()
-            data = r.json()
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (compatible; AktienanalyseBot/1.0)",
+                "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+            },
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            xml_bytes = resp.read()
 
-        if not isinstance(data, list):
+        root = ET.fromstring(xml_bytes)
+        channel = root.find("channel")
+        if channel is None:
             return []
 
-        # optional: auf letzten X Tage filtern, falls published_at verfügbar
-        cutoff = datetime.now(timezone.utc) - timedelta(days=int(days))
-        out = []
-        for it in data:
-            if not isinstance(it, dict):
-                continue
+        out: list[dict] = []
+        for item in channel.findall("item"):
+            title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            pub = (item.findtext("pubDate") or "").strip()
+            desc = (item.findtext("description") or "").strip()
+            src_el = item.find("source")
+            src = (src_el.text.strip() if src_el is not None and src_el.text else "").strip()
 
-            published = it.get("published_at") or it.get("publishedAt") or it.get("date")
-            # wir versuchen UTC parse; wenn nicht möglich: behalten (aber limit)
+            # Datum filtern (letzte X Tage)
             keep = True
-            if published:
+            if pub:
                 try:
-                    dt = pd.to_datetime(published, utc=True)
-                    keep = dt.to_pydatetime() >= cutoff
+                    dt = parsedate_to_datetime(pub)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    keep = dt >= cutoff
                 except Exception:
                     keep = True
 
-            if keep:
+            if not keep:
+                continue
+
+            if title:
                 out.append({
-                    "title": it.get("title", ""),
-                    "description": it.get("description", "") or it.get("text", ""),
-                    "url": it.get("url", "") or it.get("link", ""),
-                    "source": it.get("site", "") or it.get("source", ""),
-                    "published_at": published,
+                    "title": title,
+                    "description": desc,
+                    "url": link,
+                    "source": src,
+                    "published_at": pub,
                 })
 
-        # dedupe by title
+        # Dedupe by title
         seen = set()
         dedup = []
         for it in out:
-            t = (it.get("title") or "").strip()
+            t = it.get("title", "")
             if not t or t in seen:
                 continue
             seen.add(t)
             dedup.append(it)
 
         return dedup[: int(limit)]
+
     except Exception:
-        # robust: keine Ausnahme nach oben werfen -> UI bleibt stabil
         return []
+
 
 @st.cache_data(show_spinner=False, ttl=60 * 60 * 6)  # 6h Cache
 def lade_aktien_stimmung(symbol: str, days: int = 7, limit: int = 12) -> dict:
     """
-    Liefert eine qualitative Stimmungsbewertung für eine Aktie basierend auf aktuellen News.
+    Liefert eine qualitative Stimmungsbewertung für eine Aktie basierend auf Google News RSS.
 
     Rückgabe:
     {
@@ -406,25 +400,14 @@ def lade_aktien_stimmung(symbol: str, days: int = 7, limit: int = 12) -> dict:
       "as_of": "YYYY-MM-DD"
     }
     """
-    api_key = _get_fmp_key()
     as_of = datetime.now().strftime("%Y-%m-%d")
 
-    if not api_key:
-        return {
-            "sentiment": "NEUTRAL",
-            "explanation": "News-Stimmung nicht verfügbar (FMP_API_KEY nicht gesetzt).",
-            "pos_hits": 0,
-            "neg_hits": 0,
-            "headlines": [],
-            "as_of": as_of,
-        }
-
-    items = _fetch_fmp_stock_news(symbol, days=days, limit=limit)
+    items = _fetch_google_news_rss(symbol, days=days, limit=limit)
 
     if not items:
         return {
             "sentiment": "NEUTRAL",
-            "explanation": "Keine aktuellen News gefunden oder API-Limit/Quelle aktuell nicht erreichbar.",
+            "explanation": "Keine aktuellen News gefunden oder Quelle aktuell nicht erreichbar.",
             "pos_hits": 0,
             "neg_hits": 0,
             "headlines": [],
@@ -441,7 +424,6 @@ def lade_aktien_stimmung(symbol: str, days: int = 7, limit: int = 12) -> dict:
         "headlines": items,
         "as_of": as_of,
     }
-
 
 def klassifiziere_aktie(symbol, data, fundamentaldaten):
     """
