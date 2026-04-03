@@ -350,8 +350,7 @@ def aktienseite():
         with st.container(border=True):
             st.subheader("📰 Marktstimmung (News)")
         
-            with st.spinner("Lade News-Stimmung ..."):
-                sentiment = lade_aktien_stimmung(symbol, days=7, limit=12)
+            sentiment = lade_aktien_stimmung(symbol, days=7, limit=12)
         
             s = sentiment.get("sentiment", "NEUTRAL")
             expl = sentiment.get("explanation", "")
@@ -367,7 +366,7 @@ def aktienseite():
                 st.info(f"🟡 Neutral (Stand: {as_of})")
         
             st.caption(expl)
-            st.caption("Hinweis: Diese Einordnung ist rein informativ und hat keinen Einfluss auf Handelssignale.")
+            st.caption("Hinweis: Rein informativ – hat keinen Einfluss auf Handelssignale.")
         
             with st.expander("📄 Verwendete Schlagzeilen"):
                 items = sentiment.get("headlines", [])
@@ -385,9 +384,11 @@ def aktienseite():
                         else:
                             st.markdown(f"- {title}  \n  <small>{src} · {pub}</small>", unsafe_allow_html=True)
         
-            with st.expander("⚙️ Diagnose (nur zur Kontrolle)"):
+            # Optional: Debug-Expander (kannst du später entfernen)
+            with st.expander("⚙️ Diagnose (optional)"):
                 st.write(f"Positive Treffer: {pos_hits}")
                 st.write(f"Negative Treffer: {neg_hits}")
+
 
     # ---------------------------------------------------------
     # TAB HANDEL
