@@ -10,6 +10,14 @@ from ta.momentum import StochasticOscillator
 import json
 from pathlib import Path
 import time
+import os
+import re
+from datetime import datetime, timedelta, timezone
+# requests ist i.d.R. durch yfinance schon vorhanden – fallback ist trotzdem robust
+try:
+    import requests
+except Exception:
+    requests = None
 
 # ------------------------------------------------------
 # Aktien aus der definierten Watchlist laden
@@ -227,6 +235,212 @@ def erklaere_fundamentales_umfeld(fundamentaldaten: dict) -> str:
     )
 
     return "\n\n".join(texte)
+
+# ==============================
+# NEWS / STIMMUNGS-ANALYSE (FMP)
+# ==============================
+
+# Schlüsselwörter: bewusst simpel + erklärbar (DE + EN)
+_POS_WORDS = {
+    # EN
+    "beat", "beats", "strong", "growth", "record", "approval", "expansion", "upgrade",
+    "partnership", "surge", "rally", "outperform", "raises", "profit",
+    # DE
+    "stark", "wachstum", "rekord", "genehmigung", "zulassung", "ausbau", "hochgestuft",
+    "kooperation", "partnerschaft", "übertrifft", "gewinn", "steigt", "erhöht"
+}
+
+_NEG_WORDS = {
+    # EN
+    "warning", "downgrade", "investigation", "lawsuit", "decline", "cut", "loss",
+    "weak", "miss", "misses", "plunge", "fraud", "probe", "recall",
+    # DE
+    "gewinnwarnung", "herabstufung", "ermittlung", "klage", "rückgang", "senkt",
+    "verlust", "schwach", "verfehlt", "einbruch", "rückruf", "warnung"
+}
+
+def _get_fmp_key() -> str:
+    """
+    API Key aus Streamlit-Secrets oder ENV.
+    Keine UI-Ausgabe, nur Rückgabe.
+    """
+    try:
+        # Streamlit Secrets (falls vorhanden)
+        return st.secrets.get("FMP_API_KEY", "")  # type: ignore[attr-defined]
+    except Exception:
+        return os.getenv("FMP_API_KEY", "")
+
+def _normalize_text(s: str) -> str:
+    s = s or ""
+    s = s.lower().strip()
+    # einfache Normalisierung (Sonderzeichen raus, Mehrfachspaces)
+    s = re.sub(r"\\s+", " ", s)
+    return s
+
+def _classify_headlines(items: list[dict]) -> tuple[str, str, int, int]:
+    """
+    Regelbasierte Klassifikation: zählt positive/negative Treffer in Headlines (+ optional description).
+    Rückgabe: (sentiment, explanation, pos_count, neg_count)
+    """
+    pos = 0
+    neg = 0
+
+    for it in items:
+        title = _normalize_text(it.get("title", ""))
+        desc = _normalize_text(it.get("description", ""))
+
+        text = f"{title} {desc}".strip()
+
+        if any(w in text for w in _POS_WORDS):
+            pos += 1
+        if any(w in text for w in _NEG_WORDS):
+            neg += 1
+
+    # Aggregation bewusst simpel
+    if neg > pos and neg > 0:
+        return (
+            "NEGATIV",
+            "Mehrere aktuelle Berichte enthalten Warnsignale oder Gegenwind.",
+            pos,
+            neg,
+        )
+    if pos > neg and pos > 0:
+        return (
+            "POSITIV",
+            "Aktuelle Berichte wirken überwiegend konstruktiv bzw. unterstützend.",
+            pos,
+            neg,
+        )
+    return (
+        "NEUTRAL",
+        "Gemischte oder wenig dominante Nachrichtenlage – kein klarer Überhang erkennbar.",
+        pos,
+        neg,
+    )
+
+def _fetch_fmp_stock_news(symbol: str, days: int = 7, limit: int = 12) -> list[dict]:
+    """
+    Holt News für ein Symbol über FMP.
+    Primär: /stable/news/stock?symbols=...
+    API-Key als query param (&apikey=...).
+    Gibt Liste von dicts zurück: title, url, published_at, source, description.
+    """
+    api_key = _get_fmp_key()
+    if not api_key:
+        return []
+
+    symbol = symbol.strip().upper()
+
+    # Endpoint laut FMP Doku: /stable/news/stock?symbols=AAPL [1](https://site.financialmodelingprep.com/developer/docs/stable/search-stock-news)
+    base_url = "https://financialmodelingprep.com/stable/news/stock"
+    url = f"{base_url}?symbols={symbol}&apikey={api_key}"
+
+    try:
+        if requests is None:
+            # urllib fallback
+            import urllib.request
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                raw = resp.read().decode("utf-8")
+                data = json.loads(raw)
+        else:
+            r = requests.get(url, timeout=10)
+            r.raise_for_status()
+            data = r.json()
+
+        if not isinstance(data, list):
+            return []
+
+        # optional: auf letzten X Tage filtern, falls published_at verfügbar
+        cutoff = datetime.now(timezone.utc) - timedelta(days=int(days))
+        out = []
+        for it in data:
+            if not isinstance(it, dict):
+                continue
+
+            published = it.get("published_at") or it.get("publishedAt") or it.get("date")
+            # wir versuchen UTC parse; wenn nicht möglich: behalten (aber limit)
+            keep = True
+            if published:
+                try:
+                    dt = pd.to_datetime(published, utc=True)
+                    keep = dt.to_pydatetime() >= cutoff
+                except Exception:
+                    keep = True
+
+            if keep:
+                out.append({
+                    "title": it.get("title", ""),
+                    "description": it.get("description", "") or it.get("text", ""),
+                    "url": it.get("url", "") or it.get("link", ""),
+                    "source": it.get("site", "") or it.get("source", ""),
+                    "published_at": published,
+                })
+
+        # dedupe by title
+        seen = set()
+        dedup = []
+        for it in out:
+            t = (it.get("title") or "").strip()
+            if not t or t in seen:
+                continue
+            seen.add(t)
+            dedup.append(it)
+
+        return dedup[: int(limit)]
+    except Exception:
+        # robust: keine Ausnahme nach oben werfen -> UI bleibt stabil
+        return []
+
+@st.cache_data(show_spinner=False, ttl=60 * 60 * 6)  # 6h Cache
+def lade_aktien_stimmung(symbol: str, days: int = 7, limit: int = 12) -> dict:
+    """
+    Liefert eine qualitative Stimmungsbewertung für eine Aktie basierend auf aktuellen News.
+
+    Rückgabe:
+    {
+      "sentiment": "POSITIV" | "NEUTRAL" | "NEGATIV",
+      "explanation": str,
+      "pos_hits": int,
+      "neg_hits": int,
+      "headlines": list[dict],
+      "as_of": "YYYY-MM-DD"
+    }
+    """
+    api_key = _get_fmp_key()
+    as_of = datetime.now().strftime("%Y-%m-%d")
+
+    if not api_key:
+        return {
+            "sentiment": "NEUTRAL",
+            "explanation": "News-Stimmung nicht verfügbar (FMP_API_KEY nicht gesetzt).",
+            "pos_hits": 0,
+            "neg_hits": 0,
+            "headlines": [],
+            "as_of": as_of,
+        }
+
+    items = _fetch_fmp_stock_news(symbol, days=days, limit=limit)
+
+    if not items:
+        return {
+            "sentiment": "NEUTRAL",
+            "explanation": "Keine aktuellen News gefunden oder API-Limit/Quelle aktuell nicht erreichbar.",
+            "pos_hits": 0,
+            "neg_hits": 0,
+            "headlines": [],
+            "as_of": as_of,
+        }
+
+    sentiment, explanation, pos_hits, neg_hits = _classify_headlines(items)
+
+    return {
+        "sentiment": sentiment,
+        "explanation": explanation,
+        "pos_hits": pos_hits,
+        "neg_hits": neg_hits,
+        "headlines": items,
+        "as_of": as_of,
+    }
 
 
 def klassifiziere_aktie(symbol, data, fundamentaldaten):
