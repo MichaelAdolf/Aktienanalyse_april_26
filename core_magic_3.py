@@ -237,27 +237,87 @@ def erklaere_fundamentales_umfeld(fundamentaldaten: dict) -> str:
     return "\n\n".join(texte)
 
 
+
 # ==============================
-# NEWS / STIMMUNGS-ANALYSE (Google News RSS)
+# NEWS / STIMMUNGS-ANALYSE (Google News RSS + Kontext)
 # ==============================
 
 # Schlüsselwörter: bewusst simpel + erklärbar (DE + EN)
 _POS_WORDS = {
     # EN
     "beat", "beats", "strong", "growth", "record", "approval", "expansion", "upgrade",
-    "partnership", "surge", "rally", "outperform", "raises", "profit",
+    "partnership", "surge", "rally", "outperform", "raises", "profit", "wins",
     # DE
     "stark", "wachstum", "rekord", "genehmigung", "zulassung", "ausbau", "hochgestuft",
-    "kooperation", "partnerschaft", "übertrifft", "gewinn", "steigt", "erhöht",
+    "kooperation", "partnerschaft", "übertrifft", "gewinn", "steigt", "erhöht", "auftrag",
 }
 
 _NEG_WORDS = {
     # EN
     "warning", "downgrade", "investigation", "lawsuit", "decline", "cut", "loss",
-    "weak", "miss", "misses", "plunge", "fraud", "probe", "recall",
+    "weak", "miss", "misses", "plunge", "fraud", "probe", "recall", "delay",
     # DE
     "gewinnwarnung", "herabstufung", "ermittlung", "klage", "rückgang", "senkt",
-    "verlust", "schwach", "verfehlt", "einbruch", "rückruf", "warnung",
+    "verlust", "schwach", "verfehlt", "einbruch", "rückruf", "warnung", "verzögerung",
+}
+
+# ✅ Finalisierte Kontextliste (9 Archetypen)
+_CONTEXT_PATTERNS = {
+    "STRATEGIC_WIN": [
+        "deal", "contract", "agreement", "partnership", "award", "data center",
+        "auftrag", "vertrag", "kooperation", "partnerschaft", "deal mit",
+    ],
+    "INDEX_INCLUSION": [
+        "joined the s&p", "added to the s&p", "s&p 100", "s&p100", "index inclusion",
+        "aufnahme in", "index", "dax", "mdax", "sdax", "stoxx",
+    ],
+    "EARNINGS_EVENT": [
+        "earnings", "results", "guidance", "q1", "q2", "q3", "q4",
+        "quartal", "quartalszahlen", "ergebnisse", "ausblick", "prognose",
+    ],
+    "LATE_STAGE_RUN": [
+        "tripled", "has tripled", "up ", "%", "rally", "after a run", "after rally",
+        "vervielfacht", "verdreifacht", "anstieg", "innerhalb eines jahres", "innerhalb eines Jahres",
+    ],
+    "VALUATION_DISCUSSION": [
+        "still a buy", "is it too late", "too late", "valuation", "expensive", "priced in",
+        "zu spät", "zu spaet", "noch kaufen", "bewertung", "teuer", "eingepreist",
+    ],
+    "OPERATIONAL_ISSUES": [
+        "production", "outage", "shutdown", "quality", "supply", "delay",
+        "produktion", "ausfall", "störung", "qualitäts", "liefer", "verzöger",
+    ],
+    "REGULATORY_PRESSURE": [
+        "regulator", "antitrust", "sec", "doj", "fda", "probe", "investigation",
+        "regulier", "kartell", "aufsicht", "ermittlung",
+    ],
+    "LEGAL_RISK": [
+        "lawsuit", "litigation", "settlement", "fine", "penalty",
+        "klage", "prozess", "vergleich", "strafe", "bußgeld", "bussgeld",
+    ],
+    "FINANCIAL_STRESS": [
+        "debt", "liquidity", "cash burn", "refinance", "credit", "downgrade",
+        "verschuld", "liquidität", "cashburn", "refinanz", "kredit", "herabstuf",
+    ],
+}
+
+# Prioritäten: damit die wichtigsten Kontexte zuerst erscheinen
+_CONTEXT_PRIORITY = [
+    "REGULATORY_PRESSURE", "LEGAL_RISK", "FINANCIAL_STRESS", "OPERATIONAL_ISSUES",
+    "EARNINGS_EVENT", "STRATEGIC_WIN", "INDEX_INCLUSION", "VALUATION_DISCUSSION", "LATE_STAGE_RUN",
+]
+
+# Textbausteine für die Erklärung (kurz & verständlich)
+_CONTEXT_EXPLAIN = {
+    "STRATEGIC_WIN": "Strategische/kommerzielle Meldungen (z. B. Deal/Vertrag/Partnerschaft) stehen im Fokus.",
+    "INDEX_INCLUSION": "Index-/Aufnahme-Themen (z. B. S&P/DAX) werden diskutiert.",
+    "EARNINGS_EVENT": "Quartalszahlen/Ausblick sind ein wiederkehrendes Thema.",
+    "LATE_STAGE_RUN": "Starker vorheriger Kurslauf wird thematisiert (z. B. stark gestiegen/vervielfacht/Prozentangaben).",
+    "VALUATION_DISCUSSION": "Ein Teil der Berichte dreht sich um Bewertung/Timing (z. B. ‚zu spät?‘ / ‚noch kaufen?‘).",
+    "OPERATIONAL_ISSUES": "Hinweise auf operative Themen (Produktion/Lieferkette/Verzögerungen) tauchen auf.",
+    "REGULATORY_PRESSURE": "Regulatorische/aufsichtsrechtliche Themen werden erwähnt.",
+    "LEGAL_RISK": "Rechtliche Risiken (Klagen/Strafen) werden angesprochen.",
+    "FINANCIAL_STRESS": "Finanzielle Anspannung (Verschuldung/Liquidität/Herabstufung) wird thematisiert.",
 }
 
 
@@ -267,15 +327,42 @@ def _normalize_text(s: str) -> str:
     return s
 
 
-def _classify_headlines(items: list[dict]) -> tuple[str, str, int, int]:
+def _extract_contexts(items: list[dict], max_contexts: int = 3) -> list[str]:
     """
-    Regelbasierte Klassifikation:
-    - zählt positive/negative Treffer über Title + Description.
-    Rückgabe: (sentiment, explanation, pos_hits, neg_hits)
+    Ermittelt 0..n Kontexte aus Headlines+Descriptions:
+    - zählt Treffer pro Kontext
+    - gibt die Top-Kontexte nach Count + Priority zurück
+    """
+    counts = {k: 0 for k in _CONTEXT_PATTERNS.keys()}
+
+    for it in items:
+        title = _normalize_text(it.get("title", ""))
+        desc = _normalize_text(it.get("description", ""))
+        text = f"{title} {desc}".strip()
+
+        for ctx, pats in _CONTEXT_PATTERNS.items():
+            if any(p in text for p in pats):
+                counts[ctx] += 1
+
+    active = {k: v for k, v in counts.items() if v > 0}
+    if not active:
+        return []
+
+    prio = {k: i for i, k in enumerate(_CONTEXT_PRIORITY)}
+    items_sorted = sorted(active.items(), key=lambda kv: (-kv[1], prio.get(kv[0], 999)))
+    return [k for k, _ in items_sorted[:max_contexts]]
+
+
+def _classify_sentiment(items: list[dict]) -> tuple[str, int, int]:
+    """
+    Basissentiment (V1): zählt positive/negative Trigger.
+    Ergebnis:
+      - NEGATIV wenn neg > pos und neg>0
+      - POSITIV wenn pos > neg und pos>0
+      - sonst NEUTRAL
     """
     pos = 0
     neg = 0
-
     for it in items:
         title = _normalize_text(it.get("title", ""))
         desc = _normalize_text(it.get("description", ""))
@@ -287,37 +374,55 @@ def _classify_headlines(items: list[dict]) -> tuple[str, str, int, int]:
             neg += 1
 
     if neg > pos and neg > 0:
-        return "NEGATIV", "Mehrere aktuelle Berichte enthalten Warnsignale oder Gegenwind.", pos, neg
+        return "NEGATIV", pos, neg
     if pos > neg and pos > 0:
-        return "POSITIV", "Aktuelle Berichte wirken überwiegend konstruktiv bzw. unterstützend.", pos, neg
-    return "NEUTRAL", "Gemischte oder wenig dominante Nachrichtenlage – kein klarer Überhang erkennbar.", pos, neg
+        return "POSITIV", pos, neg
+    return "NEUTRAL", pos, neg
+
+
+def _compose_explanation(sentiment: str, contexts: list[str]) -> str:
+    """
+    Kombiniert Basissentiment + Kontextbausteine zu einem verständlichen Satz.
+    """
+    base = {
+        "POSITIV": "Aktuelle Berichte wirken überwiegend konstruktiv bzw. unterstützend.",
+        "NEGATIV": "Mehrere aktuelle Berichte enthalten Warnsignale oder Gegenwind.",
+        "NEUTRAL": "Gemischte oder wenig dominante Nachrichtenlage – kein klarer Überhang erkennbar.",
+    }.get(sentiment, "Nachrichtenlage aktuell schwer einzuordnen.")
+
+    if not contexts:
+        return base
+
+    ctx_texts = []
+    for c in contexts:
+        t = _CONTEXT_EXPLAIN.get(c)
+        if t:
+            ctx_texts.append(t)
+
+    if not ctx_texts:
+        return base
+
+    return base + " " + " ".join(ctx_texts)
 
 
 def _fetch_google_news_rss(symbol: str, days: int = 7, limit: int = 12) -> list[dict]:
     """
-    Holt News-Headlines über Google News RSS (kostenlos, kein API-Key).
-    Wir verwenden den RSS-Suchfeed: https://news.google.com/rss/search?q=...
-    und parsen <item>-Einträge. [1](https://www.wprssaggregator.com/google-news-rss-feed/)
+    Holt Headlines aus Google News RSS (kostenlos, kein API-Key).
+    Wir nutzen Suchfeed: https://news.google.com/rss/search?q=...
     """
     symbol = (symbol or "").strip().upper()
     if not symbol:
         return []
 
-    # Für .DE Ticker: besser "Aktie" statt "stock"
     base = symbol.split(".")[0]
     keyword = "Aktie" if symbol.endswith(".DE") else "stock"
-
-    # Query: reduziere Rauschen, erhöhe Treffer für DE/EU
-    # Beispiel: "ALV Aktie" + Symbol
     query = quote_plus(f"{base} {symbol} {keyword}")
 
-    # Locale (optional via ENV umstellbar)
     hl = os.getenv("NEWS_RSS_HL", "de")
     gl = os.getenv("NEWS_RSS_GL", "DE")
     ceid = os.getenv("NEWS_RSS_CEID", "DE:de")
 
     url = f"https://news.google.com/rss/search?q={query}&hl={hl}&gl={gl}&ceid={ceid}"
-
     cutoff = datetime.now(timezone.utc) - timedelta(days=int(days))
 
     try:
@@ -346,7 +451,6 @@ def _fetch_google_news_rss(symbol: str, days: int = 7, limit: int = 12) -> list[
             src_el = item.find("source")
             src = (src_el.text.strip() if src_el is not None and src_el.text else "").strip()
 
-            # Datum filtern (letzte X Tage)
             keep = True
             if pub:
                 try:
@@ -369,7 +473,7 @@ def _fetch_google_news_rss(symbol: str, days: int = 7, limit: int = 12) -> list[
                     "published_at": pub,
                 })
 
-        # Dedupe by title
+        # Duplikate nach Titel entfernen
         seen = set()
         dedup = []
         for it in out:
@@ -388,11 +492,12 @@ def _fetch_google_news_rss(symbol: str, days: int = 7, limit: int = 12) -> list[
 @st.cache_data(show_spinner=False, ttl=60 * 60 * 6)  # 6h Cache
 def lade_aktien_stimmung(symbol: str, days: int = 7, limit: int = 12) -> dict:
     """
-    Liefert eine qualitative Stimmungsbewertung für eine Aktie basierend auf Google News RSS.
+    Liefert Stimmung + Kontext für eine Aktie.
 
     Rückgabe:
     {
       "sentiment": "POSITIV" | "NEUTRAL" | "NEGATIV",
+      "contexts": list[str],
       "explanation": str,
       "pos_hits": int,
       "neg_hits": int,
@@ -403,10 +508,10 @@ def lade_aktien_stimmung(symbol: str, days: int = 7, limit: int = 12) -> dict:
     as_of = datetime.now().strftime("%Y-%m-%d")
 
     items = _fetch_google_news_rss(symbol, days=days, limit=limit)
-
     if not items:
         return {
             "sentiment": "NEUTRAL",
+            "contexts": [],
             "explanation": "Keine aktuellen News gefunden oder Quelle aktuell nicht erreichbar.",
             "pos_hits": 0,
             "neg_hits": 0,
@@ -414,10 +519,13 @@ def lade_aktien_stimmung(symbol: str, days: int = 7, limit: int = 12) -> dict:
             "as_of": as_of,
         }
 
-    sentiment, explanation, pos_hits, neg_hits = _classify_headlines(items)
+    sentiment, pos_hits, neg_hits = _classify_sentiment(items)
+    contexts = _extract_contexts(items, max_contexts=3)
+    explanation = _compose_explanation(sentiment, contexts)
 
     return {
         "sentiment": sentiment,
+        "contexts": contexts,
         "explanation": explanation,
         "pos_hits": pos_hits,
         "neg_hits": neg_hits,
