@@ -513,8 +513,8 @@ def aktienseite():
                     st.subheader("✅ Warum dieses Setup so bewertet wird")
 
                     reasons = []
-                    bb_mid_value = bb_mid.iloc[-1]
                     last_close = df["Close"].iloc[-1]
+                    bb_mid_value = df["BB_MID"].iloc[-1]
                     # --- Bollinger ---
                     if last_close > bb_mid_value:
                         reasons.append({
