@@ -515,13 +515,16 @@ def aktienseite():
                     reasons = []
                     last_close = data["Close"].iloc[-1]
                     bb_mid_value = data["BB_MID"].iloc[-1]
-                    # --- Bollinger ---
-                    if last_close > bb_mid_value:
-                        reasons.append({
-                            "label": "Kurs oberhalb des Bollinger‑Mittels",
-                            "explanation": "Der Kurs liegt über dem mittleren Bollinger‑Band – ein Hinweis auf kurzfristige Stärke."
-                        })
                     
+                    if bollinger_rebound:
+                        reasons.append({
+                            "label": "Überdehnung an der unteren Bollinger‑Grenze",
+                            "explanation": (
+                                "Der Kurs befindet sich nahe der unteren Bollinger‑Grenze. "
+                                "Historisch traten in solchen Situationen häufiger technische Gegenbewegungen auf."
+                            )
+                        })
+
                     # --- MACD ---
                     if macd_hist >= 0:
                         reasons.append({
