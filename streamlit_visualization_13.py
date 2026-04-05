@@ -147,6 +147,10 @@ RULE_REASON_MAP = {
         "label": "RSI überverkauft",
         "text": "Der RSI liegt unter dem definierten Schwellenwert und signalisiert eine technische Überverkauftheit."
     },
+    "close_above_bb_mid": {
+        "label": "Kurs über Bollinger‑Mittelband",
+        "text": "Der Kurs liegt über dem mittleren Bollinger‑Band – das ist eher ein Bestätigungssignal, aber allein noch kein Einstieg."
+    },
     "bb_lower_touch": {
         "label": "Nahe der unteren Bollinger‑Grenze",
         "text": "Der Kurs befindet sich nahe oder unter dem unteren Bollinger‑Band – häufig eine Rebound‑Zone."
@@ -525,20 +529,67 @@ def aktienseite():
                     with st.container(border=True):
                         st.subheader("✅ Warum dieses Setup so bewertet wird")
                     
-                        decision = decision_v2   # nur neue Engine
-                        reasons = getattr(decision, "reasons", [])
-                    
-                        if not reasons:
+                        decision = decision_v2  # nur neue Engine
+                        reasons_all = list(getattr(decision, "reasons", []) or [])
+                        
+                        # 1) Kern-Gründe (wirklich entscheidungsrelevant fürs Setup)
+                        CORE_REASONS = {
+                            # Entry-Kernbedingungen
+                            "rsi_low", "bb_lower_touch", "macd_hist_neg", "hist_rising",
+                            # State-Machine Events
+                            "enter", "validated", "waiting_validation", "entry_window_expired", "setup_eroded",
+                            # Exit/Invalidation/Meta
+                            "tp_hit", "exit", "new_low", "hist_falling", "downtrend_strength", "meta_suppressed", "dedup",
+                        }
+                        
+                        # 2) Bestätigungen (häufig, aber allein nicht ausreichend)
+                        CONFIRM_REASONS = {"macd_cross_up", "hist_nonneg", "close_above_bb_mid"}
+                        
+                        core = [r for r in reasons_all if r in CORE_REASONS]
+                        confirm = [r for r in reasons_all if r in CONFIRM_REASONS]
+                        
+                        # Optionale Reihenfolge (macht die Anzeige stabiler)
+                        ORDER = [
+                            "rsi_low", "bb_lower_touch", "macd_hist_neg", "hist_rising",
+                            "enter", "validated", "waiting_validation", "setup_eroded", "entry_window_expired",
+                            "macd_cross_up", "hist_nonneg", "close_above_bb_mid",
+                            "tp_hit", "downtrend_strength", "new_low", "hist_falling", "meta_suppressed", "dedup", "exit",
+                        ]
+                        core = sorted(core, key=lambda x: ORDER.index(x) if x in ORDER else 999)
+                        confirm = sorted(confirm, key=lambda x: ORDER.index(x) if x in ORDER else 999)
+                        
+                        # --- Anzeige ---
+                        if not core and not confirm:
                             st.info("Keine erklärenden Regeln verfügbar.")
                         else:
-                            for r in reasons:
-                                info = RULE_REASON_MAP.get(r)
-                                if info:
-                                    st.markdown(f"**✔️ {info['label']}**")
-                                    st.write(info["text"])
-                                else:
-                                    # Fallback für neue / unbekannte Regeln
-                                    st.markdown(f"**✔️ {r}**")
+                            # A) Kern-Auslöser zeigen (wenn vorhanden)
+                            if core:
+                                st.markdown("**Kern-Auslöser (entscheidend für das Setup):**")
+                                for r in core:
+                                    info = RULE_REASON_MAP.get(r)
+                                    if info:
+                                        st.markdown(f"**✔️ {info['label']}**")
+                                        st.write(info["text"])
+                                    else:
+                                        st.markdown(f"**✔️ {r}**")
+                        
+                            # B) Bestätigungen nur zeigen, wenn das Setup wirklich aktiv ist
+                            # (sonst wirken sie bei jeder Aktie gleich und verwirren)
+                            setup_is_active = ("enter" in core) or ("validated" in core) or (decision.signal == "BUY") or (decision.state in ("ENTRY_ACTIVE", "VALIDATED", "HOLDING"))
+                            if confirm and setup_is_active:
+                                with st.expander("🔎 Zusätzliche Bestätigungen"):
+                                    for r in confirm:
+                                        info = RULE_REASON_MAP.get(r)
+                                        if info:
+                                            st.markdown(f"**✔️ {info['label']}**")
+                                            st.write(info["text"])
+                                        else:
+                                            st.markdown(f"**✔️ {r}**")
+                        
+                            # C) Falls kein Setup aktiv, aber Bestätigungen existieren:
+                            # -> freundlich erklären statt „immer gleich“ wirken lassen
+                            if confirm and not setup_is_active and not core:
+                                st.caption("Es liegen zwar einzelne Bestätigungsfaktoren vor, aber noch keine vollständigen Einstiegsvoraussetzungen.")
                                                     
         # ---------------------------------------------------------
         # TAB Qualität
