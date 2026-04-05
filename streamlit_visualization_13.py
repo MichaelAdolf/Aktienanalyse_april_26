@@ -142,6 +142,17 @@ def map_decision_to_setup(decision):
         "confidence": confidence_label,
     }
 
+def compute_max_drawdown(close_series: pd.Series) -> float:
+    """
+    Berechnet den maximalen historischen Drawdown (in Prozent, negativ).
+    """
+    if close_series is None or len(close_series) < 2:
+        return 0.0
+
+    running_max = close_series.cummax()
+    drawdown = (close_series - running_max) / running_max
+    return float(drawdown.min())
+
 RULE_REASON_MAP = {
     "rsi_low": {
         "label": "RSI überverkauft",
@@ -590,7 +601,55 @@ def aktienseite():
                             # -> freundlich erklären statt „immer gleich“ wirken lassen
                             if confirm and not setup_is_active and not core:
                                 st.caption("Es liegen zwar einzelne Bestätigungsfaktoren vor, aber noch keine vollständigen Einstiegsvoraussetzungen.")
-                                                    
+                    
+                    with st.container(border=True):
+                        st.subheader("⚠️ Risiko & möglicher Rückschlag")
+                    
+                        # --- Drawdown-Berechnung (z. B. letzte 6 Monate) ---
+                        lookback_days = 180
+                        dd_series = data["Close"].iloc[-lookback_days:] if len(data) > lookback_days else data["Close"]
+                        max_dd = compute_max_drawdown(dd_series)
+                    
+                        # --- Risiko-Level aus Confidence ableiten ---
+                        conf = decision_v2.confidence
+                        if conf >= 0.7:
+                            risk_level = "Niedrig"
+                            risk_color = "success"
+                        elif conf >= 0.5:
+                            risk_level = "Mittel"
+                            risk_color = "info"
+                        else:
+                            risk_level = "Erhöht"
+                            risk_color = "warning"
+                    
+                        # --- Anzeige ---
+                        st.metric(
+                            label="Historischer maximaler Drawdown",
+                            value=f"{max_dd * 100:.1f} %",
+                            help="Größter historischer Rückgang vom Hoch zum Tief im betrachteten Zeitraum."
+                        )
+                    
+                        if risk_color == "success":
+                            st.success(f"Risikoeinschätzung: {risk_level}")
+                        elif risk_color == "info":
+                            st.info(f"Risikoeinschätzung: {risk_level}")
+                        else:
+                            st.warning(f"Risikoeinschätzung: {risk_level}")
+                    
+                        # --- Erklärung für Nutzer ---
+                        st.markdown(
+                            f"""
+                    **Was bedeutet das?**
+                    
+                    - Der maximale historische Rückgang lag bei **{max_dd * 100:.1f} %**.
+                    - Die aktuelle **Konfidenz der Strategie** liegt bei **{conf:.2f}**.
+                    - Daraus ergibt sich eine **{risk_level.lower()}e Risikoeinschätzung**.
+                    
+                    **Hinweis:**  
+                    Ein historischer Drawdown zeigt, welche Rückschläge *möglich waren* –  
+                    er ist **keine Garantie**, dass sich diese exakt wiederholen.
+                    """
+                        )             
         # ---------------------------------------------------------
         # TAB Qualität
         # ---------------------------------------------------------
