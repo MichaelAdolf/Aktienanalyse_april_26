@@ -608,7 +608,6 @@ def aktienseite():
                     
                         reasons = build_setup_reasons(
                             tradedecision_result=decision_v2,
-                            market_result=market_result,
                             rsi_result=rsi_result,
                             macd_result=macd_result,
                             adx_result=adx_result,
