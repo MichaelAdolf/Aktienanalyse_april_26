@@ -81,6 +81,67 @@ def render_interp(interp: dict):
     else:
         st.caption(meaning)
 
+def map_decision_to_setup(decision):
+    """
+    Übersetzt die interne Handelsentscheidung in eine
+    nutzerfreundliche Setup-Bewertung inkl. Metainfos.
+    KEINE Handelsanweisung!
+    """
+
+    signal = decision.signal
+    confidence = decision.confidence if hasattr(decision, "confidence") else None
+    score = decision.score if hasattr(decision, "score") else None
+    volatility = decision.volatility if hasattr(decision, "volatility") else None
+
+    # --- Setup-Bewertung ---
+    if signal == "BUY":
+        setup = "Attraktives Setup"
+        setup_color = "success"
+    elif signal == "SELL":
+        setup = "Aktuell unattraktiv"
+        setup_color = "error"
+    else:
+        setup = "Beobachtenswert"
+        setup_color = "info"
+
+    # --- Signalstärke (Score → Begriff) ---
+    if score is None:
+        strength = "Nicht verfügbar"
+    elif score >= 0.7:
+        strength = "Hoch"
+    elif score >= 0.5:
+        strength = "Mittel"
+    else:
+        strength = "Gering"
+
+    # --- Risiko (vereinfachte Ableitung) ---
+    if volatility is None:
+        risk = "Nicht bewertet"
+    elif volatility > 0.03:
+        risk = "Erhöht"
+    elif volatility > 0.015:
+        risk = "Mittel"
+    else:
+        risk = "Gering"
+
+    # --- Konfidenz ---
+    if confidence is None:
+        confidence_label = "Nicht bewertet"
+    elif confidence >= 0.7:
+        confidence_label = "Hoch"
+    elif confidence >= 0.5:
+        confidence_label = "Mittel"
+    else:
+        confidence_label = "Gering"
+
+    return {
+        "setup": setup,
+        "setup_color": setup_color,
+        "signal_strength": strength,
+        "risk": risk,
+        "confidence": confidence_label,
+    }
+
 def home_page():
     watchlist = lade_aktien()
     # --------------------------------------------------
@@ -338,15 +399,18 @@ def aktienseite():
         # --- 2️⃣ RECHTE SPALTE ---
         with col2:
             with st.container(border=True):
-                st.subheader("🔄 Swingtrading Übersicht (RuleEngineV2)")
-        
-                if decision_v2.signal == "BUY":
-                    st.success("✅ BUY – Entry Transition")
-                elif decision_v2.signal == "SELL":
-                    st.error("❌ SELL – Exit Transition")
+                ui = map_decision_to_setup(decision_v2)
+                
+                if ui["setup_color"] == "success":
+                    st.success(f"🟢 {ui['setup']}")
+                elif ui["setup_color"] == "error":
+                    st.error(f"🔴 {ui['setup']}")
                 else:
-                    st.info("⏸ HOLD – kein Trade")
-
+                    st.info(f"🟡 {ui['setup']}")
+                
+                st.caption(f"Signalstärke: {ui['signal_strength']}")
+                st.caption(f"Risiko: {ui['risk']}")
+                st.caption(f"Konfidenz: {ui['confidence']}")
         
         with st.container(border=True):
             st.subheader("📰 Marktstimmung (News)")
@@ -393,14 +457,26 @@ def aktienseite():
     # ---------------------------------------------------------
     with tab_handel:
         with st.container(border=True):
-                st.markdown("## 🧠 Handelsentscheidung (RuleEngineV2)")        
+                st.markdown("## 🧠 Handelsinterpretation")        
                 with st.container(border=True):
-                    if decision_v2.signal == "BUY":
-                        st.success("✅ BUY – Einstiegssignal")
-                    elif decision_v2.signal == "SELL":
-                        st.error("❌ SELL – Ausstiegssignal")
+                    ui = map_decision_to_setup(decision_v2)
+
+                    st.markdown("### Setup-Bewertung")
+                    
+                    if ui["setup_color"] == "success":
+                        st.success(f"🟢 {ui['setup']}")
+                    elif ui["setup_color"] == "error":
+                        st.error(f"🔴 {ui['setup']}")
                     else:
-                        st.info("⏸ HOLD – keine Aktion")
+                        st.info(f"🟡 {ui['setup']}")
+                    
+                    st.markdown(f"""
+                    **Signalstärke:** {ui['signal_strength']}  
+                    **Risiko:** {ui['risk']}  
+                    **Konfidenz:** {ui['confidence']}
+                    """)
+                    
+                    st.caption("Hinweis: Diese Bewertung stellt keine Kauf- oder Verkaufsempfehlung dar.")
         
                     st.markdown("### 🧠 Entscheidungsdetails")
                     col1, col2 = st.columns(2)
