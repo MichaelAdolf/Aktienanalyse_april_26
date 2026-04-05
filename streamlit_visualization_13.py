@@ -513,8 +513,6 @@ def aktienseite():
                     st.subheader("✅ Warum dieses Setup so bewertet wird")
 
                     reasons = []
-                    last_close = data["Close"].iloc[-1]
-                    bb_mid_value = data["BB_MID"].iloc[-1]
                     
                     if bollinger_rebound:
                         reasons.append({
