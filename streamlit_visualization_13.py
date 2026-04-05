@@ -639,17 +639,60 @@ def aktienseite():
                         # --- Erklärung für Nutzer ---
                         st.markdown(
                             f"""
-                    **Was bedeutet das?**
+                            **Was bedeutet das?**
+                            
+                            - Der maximale historische Rückgang lag bei **{max_dd * 100:.1f} %**.
+                            - Die aktuelle **Konfidenz der Strategie** liegt bei **{conf:.2f}**.
+                            - Daraus ergibt sich eine **{risk_level.lower()}e Risikoeinschätzung**.
+                            
+                            **Hinweis:**  
+                            Ein historischer Drawdown zeigt, welche Rückschläge *möglich waren* –  
+                            er ist **keine Garantie**, dass sich diese exakt wiederholen.
+                            """
+                        )
+
+                    with st.container(border=True):
+                        st.subheader("🎯 Erfolgswahrscheinlichkeit")
                     
-                    - Der maximale historische Rückgang lag bei **{max_dd * 100:.1f} %**.
-                    - Die aktuelle **Konfidenz der Strategie** liegt bei **{conf:.2f}**.
-                    - Daraus ergibt sich eine **{risk_level.lower()}e Risikoeinschätzung**.
+                        # --- Basis: Confidence aus RuleEngineV2 ---
+                        conf = decision_v2.confidence
+                    
+                        # --- Optional: Meta-Modell ---
+                        meta = getattr(decision_v2, "meta", {}) or {}
+                        p_success = meta.get("p_success")
+                    
+                        # --- Anzeige Hauptwert ---
+                        st.metric(
+                            label="Geschätzte Erfolgswahrscheinlichkeit",
+                            value=f"{conf * 100:.0f} %",
+                            help="Interne Schätzung der Strategie basierend auf aktuellen Marktbedingungen."
+                        )
+                    
+                        # --- Erklärung ---
+                        if p_success is not None:
+                            st.info(
+                                f"""
+                    **Einordnung:**
+                    
+                    - Die Regel‑Engine schätzt die Erfolgschance aktuell auf **{conf * 100:.0f} %**.
+                    - Das Meta‑Modell bestätigt dies mit einer modellbasierten Wahrscheinlichkeit von **{p_success * 100:.0f} %**.
+                    
+                    Diese Kombination deutet auf ein **statistisch unterstütztes Setup** hin.
+                    """
+                            )
+                        else:
+                            st.markdown(
+                                f"""
+                    **Einordnung:**
+                    
+                    - Die aktuelle Erfolgswahrscheinlichkeit liegt bei **{conf * 100:.0f} %**.
+                    - Diese Einschätzung basiert auf erfüllten Regeln, Marktphase und internen Validierungen.
                     
                     **Hinweis:**  
-                    Ein historischer Drawdown zeigt, welche Rückschläge *möglich waren* –  
-                    er ist **keine Garantie**, dass sich diese exakt wiederholen.
+                    Dies ist eine **Schätzung**, keine Garantie.
                     """
-                        )             
+                    )
+                            
         # ---------------------------------------------------------
         # TAB Qualität
         # ---------------------------------------------------------
@@ -668,6 +711,19 @@ def aktienseite():
                 st.caption(
                     f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
                 )
+                with st.container(border=True):
+                    st.caption(
+                        """
+                    **Unterschied Erfolgswahrscheinlichkeit vs. Trefferquote**
+                    
+                    - **Erfolgswahrscheinlichkeit**: Einschätzung für das *aktuelle* Setup.
+                    - **Trefferquote**: Historische Quote ähnlicher Signale in der Vergangenheit.
+                    
+                    Beide Werte ergänzen sich:
+                    Die Trefferquote zeigt, *wie oft* Signale früher funktioniert haben,
+                    die Erfolgswahrscheinlichkeit bewertet, *wie gut das aktuelle Setup* ist.
+                    """
+                    )
 
     # ---------------------------------------------------------
     # TAB CHARTS
