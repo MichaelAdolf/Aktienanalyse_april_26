@@ -167,7 +167,6 @@ RULE_EXPLANATIONS = {
 
 def build_setup_reasons(
     tradedecision_result: dict,
-    market_result: dict,
     rsi_result: dict,
     macd_result: dict,
     adx_result: dict,
