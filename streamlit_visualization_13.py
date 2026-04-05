@@ -628,7 +628,6 @@ def aktienseite():
                                 if r.get("long"):
                                     with st.expander("Warum ist das wichtig?"):
                                         st.write(r["long"])
-                    ``
                                                     
                         # ---------------------------------------------------------
                         # TAB Qualität
