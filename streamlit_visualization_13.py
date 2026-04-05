@@ -608,7 +608,7 @@ def aktienseite():
                         st.subheader("✅ Warum dieses Setup so bewertet wird")
                     
                         reasons = build_setup_reasons(
-                            tradedecision_result=tradedecision_result,
+                            tradedecision_result=decision_v2,
                             market_result=market_result,
                             rsi_result=rsi_result,
                             macd_result=macd_result,
