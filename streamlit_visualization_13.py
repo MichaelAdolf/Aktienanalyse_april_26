@@ -165,6 +165,100 @@ RULE_EXPLANATIONS = {
     },
 }
 
+def build_setup_reasons(
+    tradedecision_result: dict,
+    market_result: dict,
+    rsi_result: dict,
+    macd_result: dict,
+    adx_result: dict,
+    ma_result: dict,
+    bollinger_result: dict,
+    stochastic_result: dict,
+) -> list[dict]:
+    """
+    Baut erklärbare Gründe für die Zielgruppe aus bereits berechneten Analyse-Ergebnissen.
+    KEINE neuen Berechnungen, keine neuen Spaltenzugriffe.
+    """
+    reasons = []
+
+    # 0) Entscheidungsgrundlage aus der Engine (ist bereits sprechend)
+    if tradedecision_result.get("reason"):
+        reasons.append({
+            "label": "Entscheidungsgrundlage (Engine)",
+            "short": tradedecision_result.get("reason", ""),
+            "long": tradedecision_result.get("interpretation_long", "")
+        })
+
+    # 1) Bollinger (nutze vorhandene BollingerAnalysis-Ausgabe)
+    b_state = bollinger_result.get("state")
+    if b_state in ("Below_Lower", "Lower_Half"):
+        reasons.append({
+            "label": "Preiszone (Bollinger) eher günstig",
+            "short": bollinger_result.get("summary", "Bollinger: günstige Zone"),
+            "long": bollinger_result.get("interpretation_long", "")
+        })
+    elif b_state == "Above_Upper":
+        reasons.append({
+            "label": "Preiszone (Bollinger) überdehnt",
+            "short": bollinger_result.get("summary", "Bollinger: überdehnt"),
+            "long": bollinger_result.get("interpretation_long", "")
+        })
+
+    # 2) RSI (nutze Interpretation aus RSIAnalysis)
+    r_state = rsi_result.get("state")
+    r_interp = rsi_result.get("interpretation", {})
+    if r_state in ("oversold", "overbought", "bullish_strength", "bearish_weakness"):
+        reasons.append({
+            "label": f"RSI: {r_interp.get('headline', r_state)}",
+            "short": r_interp.get("meaning", ""),
+            "long": f"Chance: {r_interp.get('chance','')} | Risiko: {r_interp.get('risk','')}"
+        })
+
+    # 3) MACD (nutze Interpretation aus MACDAnalysis)
+    m_interp = macd_result.get("interpretation", {})
+    m_regime = macd_result.get("regime")
+    if m_regime in ("bullish", "bearish"):
+        reasons.append({
+            "label": f"MACD: {m_interp.get('headline', m_regime)}",
+            "short": m_interp.get("meaning", ""),
+            "long": f"Chance: {m_interp.get('chance','')} | Risiko: {m_interp.get('risk','')}"
+        })
+
+    # 4) ADX (Trendstärke / Umfeld)
+    a_regime = adx_result.get("regime")
+    if a_regime:
+        reasons.append({
+            "label": "Trendstärke / Marktumfeld (ADX)",
+            "short": adx_result.get("summary", ""),
+            "long": adx_result.get("interpretation_long", "")
+        })
+
+    # 5) MA (Trendrichtung MA10/MA50 – aus MAAnalysis)
+    ma_trend = ma_result.get("ma_trend")
+    ma_cross = ma_result.get("ma_cross")
+    if ma_trend in ("bullish", "bearish"):
+        txt = "Aufwärtstrend (MA10 über MA50)" if ma_trend == "bullish" else "Abwärtstrend (MA10 unter MA50)"
+        extra = ""
+        if ma_cross in ("bullish_cross", "bearish_cross"):
+            extra = f" Zusätzlich: Crossover ({ma_cross})."
+        reasons.append({
+            "label": "Trendrichtung (Gleitende Durchschnitte)",
+            "short": txt + extra,
+            "long": "Gleitende Durchschnitte helfen, Trendphasen von Seitwärtsphasen zu unterscheiden."
+        })
+
+    # 6) Stochastik (Timing)
+    s_regime = stochastic_result.get("regime")
+    if s_regime in ("Oversold_Reversal", "Overbought_Reversal", "Bullish_Momentum", "Bearish_Momentum"):
+        reasons.append({
+            "label": "Timing (Stochastik)",
+            "short": stochastic_result.get("summary", ""),
+            "long": stochastic_result.get("interpretation_long", "")
+        })
+
+    # optional: Begrenzen, damit Anfänger nicht überfordert werden
+    return reasons[:5]
+
 def home_page():
     watchlist = lade_aktien()
     # --------------------------------------------------
@@ -510,75 +604,50 @@ def aktienseite():
                     with col2:
                         st.metric("Confidence", f"{decision_v2.confidence:.2f}")
 
-                    st.subheader("✅ Warum dieses Setup so bewertet wird")
-
-                    reasons = []
+                    with st.container(border=True):
+                        st.subheader("✅ Warum dieses Setup so bewertet wird")
                     
-                    if bollinger_rebound:
-                        reasons.append({
-                            "label": "Überdehnung an der unteren Bollinger‑Grenze",
-                            "explanation": (
-                                "Der Kurs befindet sich nahe der unteren Bollinger‑Grenze. "
-                                "Historisch traten in solchen Situationen häufiger technische Gegenbewegungen auf."
-                            )
-                        })
-
-                    # --- MACD ---
-                    if macd_hist >= 0:
-                        reasons.append({
-                            "label": "Positives Momentum (MACD)",
-                            "explanation": "Das MACD‑Histogramm ist positiv und deutet auf zunehmendes Aufwärtsmomentum hin."
-                        })
+                        reasons = build_setup_reasons(
+                            tradedecision_result=tradedecision_result,
+                            market_result=market_result,
+                            rsi_result=rsi_result,
+                            macd_result=macd_result,
+                            adx_result=adx_result,
+                            ma_result=ma_result,
+                            bollinger_result=bollinger_result,
+                            stochastic_result=stochastic_result,
+                        )
                     
-                    # --- RSI ---
-                    if rsi_state == "oversold":
-                        reasons.append({
-                            "label": "RSI überverkauft",
-                            "explanation": "Der RSI befindet sich im überverkauften Bereich – eine technische Gegenbewegung ist möglich."
-                        })
-                    
-                    # --- Trend ---
-                    if trend == "up":
-                        reasons.append({
-                            "label": "Übergeordneter Aufwärtstrend",
-                            "explanation": "Der mittelfristige Trend zeigt nach oben (z. B. MA50 über MA200)."
-                        })
-                    
-                    # --- ADX ---
-                    if adx_value >= 25:
-                        reasons.append({
-                            "label": "Starker Trend (ADX)",
-                            "explanation": "Der ADX signalisiert eine ausgeprägte Trendstärke."
-                        })
-                    
-                    # --- Anzeige ---
-                    if not reasons:
-                        st.info("Aktuell keine klar dominierenden technischen Faktoren.")
-                    else:
-                        for r in reasons:
-                            st.markdown(f"""
-                    **✔️ {r['label']}**  
-                    _{r['explanation']}_
-                    """)
-                                
-    # ---------------------------------------------------------
-    # TAB Qualität
-    # ---------------------------------------------------------
-    with tab_qualität:
-        with st.container(border=True):
-            zeige_ruleengine_buyperioden_und_trefferquote(                
-                data=data,
-                symbol=symbol,
-                Auswertung_tage=Auswertung_tage,
-                min_veraenderung=min_veraenderung,
-                max_gap_days=5,
-                active_profile=profile,
-                use_auto=use_auto
-            )
-                    
-            st.caption(
-                f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
-            )
+                        if not reasons:
+                            st.info("Aktuell keine klar dominierenden technischen Auslöser.")
+                        else:
+                            for r in reasons:
+                                st.markdown(f"**✔️ {r['label']}**")
+                                if r.get("short"):
+                                    st.write(r["short"])
+                                if r.get("long"):
+                                    with st.expander("Warum ist das wichtig?"):
+                                        st.write(r["long"])
+                    ``
+                                                    
+                        # ---------------------------------------------------------
+                        # TAB Qualität
+                        # ---------------------------------------------------------
+                        with tab_qualität:
+                            with st.container(border=True):
+                                zeige_ruleengine_buyperioden_und_trefferquote(                
+                                    data=data,
+                                    symbol=symbol,
+                                    Auswertung_tage=Auswertung_tage,
+                                    min_veraenderung=min_veraenderung,
+                                    max_gap_days=5,
+                                    active_profile=profile,
+                                    use_auto=use_auto
+                                )
+                                        
+                                st.caption(
+                                    f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
+                                )
 
     # ---------------------------------------------------------
     # TAB CHARTS
