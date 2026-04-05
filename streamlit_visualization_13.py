@@ -514,31 +514,38 @@ def aktienseite():
                     reasons = []
                     
                     # --- Bollinger ---
-                    if indicators.get("close_above_bb_mid"):
+                    if close > bb_mid:
                         reasons.append({
                             "label": "Kurs oberhalb des Bollinger‑Mittels",
                             "explanation": "Der Kurs liegt über dem mittleren Bollinger‑Band – ein Hinweis auf kurzfristige Stärke."
                         })
                     
                     # --- MACD ---
-                    if indicators.get("macd_hist", 0) >= 0:
+                    if macd_hist >= 0:
                         reasons.append({
                             "label": "Positives Momentum (MACD)",
                             "explanation": "Das MACD‑Histogramm ist positiv und deutet auf zunehmendes Aufwärtsmomentum hin."
                         })
                     
                     # --- RSI ---
-                    if indicators.get("rsi_state") == "oversold":
+                    if rsi_state == "oversold":
                         reasons.append({
                             "label": "RSI überverkauft",
                             "explanation": "Der RSI befindet sich im überverkauften Bereich – eine technische Gegenbewegung ist möglich."
                         })
                     
                     # --- Trend ---
-                    if indicators.get("trend") == "up":
+                    if trend == "up":
                         reasons.append({
                             "label": "Übergeordneter Aufwärtstrend",
                             "explanation": "Der mittelfristige Trend zeigt nach oben (z. B. MA50 über MA200)."
+                        })
+                    
+                    # --- ADX ---
+                    if adx_value >= 25:
+                        reasons.append({
+                            "label": "Starker Trend (ADX)",
+                            "explanation": "Der ADX signalisiert eine ausgeprägte Trendstärke."
                         })
                     
                     # --- Anzeige ---
