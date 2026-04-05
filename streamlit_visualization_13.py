@@ -511,21 +511,45 @@ def aktienseite():
                         st.metric("Confidence", f"{decision_v2.confidence:.2f}")
 
                     st.subheader("✅ Warum dieses Setup so bewertet wird")
-
-                    rules = getattr(decision_v2, "triggered_rules", [])
-                    if not rules:
-                        st.info("Keine eindeutigen technischen Auslöser erkannt.")
+                    reasons = []
+                    
+                    # --- Bollinger ---
+                    if indicators.get("close_above_bb_mid"):
+                        reasons.append({
+                            "label": "Kurs oberhalb des Bollinger‑Mittels",
+                            "explanation": "Der Kurs liegt über dem mittleren Bollinger‑Band – ein Hinweis auf kurzfristige Stärke."
+                        })
+                    
+                    # --- MACD ---
+                    if indicators.get("macd_hist", 0) >= 0:
+                        reasons.append({
+                            "label": "Positives Momentum (MACD)",
+                            "explanation": "Das MACD‑Histogramm ist positiv und deutet auf zunehmendes Aufwärtsmomentum hin."
+                        })
+                    
+                    # --- RSI ---
+                    if indicators.get("rsi_state") == "oversold":
+                        reasons.append({
+                            "label": "RSI überverkauft",
+                            "explanation": "Der RSI befindet sich im überverkauften Bereich – eine technische Gegenbewegung ist möglich."
+                        })
+                    
+                    # --- Trend ---
+                    if indicators.get("trend") == "up":
+                        reasons.append({
+                            "label": "Übergeordneter Aufwärtstrend",
+                            "explanation": "Der mittelfristige Trend zeigt nach oben (z. B. MA50 über MA200)."
+                        })
+                    
+                    # --- Anzeige ---
+                    if not reasons:
+                        st.info("Aktuell keine klar dominierenden technischen Faktoren.")
                     else:
-                        for rule in rules:
-                            info = RULE_EXPLANATIONS.get(rule)
-                            if info:
-                                st.markdown(f"""
-                    **✔️ {info['label']}**  
-                    _{info['explanation']}_
+                        for r in reasons:
+                            st.markdown(f"""
+                    **✔️ {r['label']}**  
+                    _{r['explanation']}_
                     """)
-                            else:
-                                # Fallback, falls eine Regel noch nicht gemappt ist
-                                st.markdown(f"✔️ {rule}")
                                 
     # ---------------------------------------------------------
     # TAB Qualität
