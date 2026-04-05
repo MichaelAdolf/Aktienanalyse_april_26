@@ -142,6 +142,29 @@ def map_decision_to_setup(decision):
         "confidence": confidence_label,
     }
 
+RULE_EXPLANATIONS = {
+    "close_above_bb_mid": {
+        "label": "Kurs oberhalb des Bollinger‑Mittels",
+        "explanation": "Der aktuelle Kurs liegt über dem mittleren Bollinger‑Band – ein Hinweis auf kurzfristige Stärke."
+    },
+    "hist_nonneg": {
+        "label": "Positives Momentum (MACD)",
+        "explanation": "Das MACD‑Histogramm ist positiv, was auf zunehmendes Aufwärtsmomentum hindeutet."
+    },
+    "rsi_oversold": {
+        "label": "RSI überverkauft",
+        "explanation": "Der RSI befindet sich im überverkauften Bereich – eine technische Gegenbewegung ist möglich."
+    },
+    "trend_up": {
+        "label": "Übergeordneter Aufwärtstrend",
+        "explanation": "Der mittelfristige Trend zeigt nach oben (z. B. MA50 über MA200)."
+    },
+    "adx_strong": {
+        "label": "Starker Trend",
+        "explanation": "Der ADX signalisiert eine ausgeprägte Trendstärke."
+    },
+}
+
 def home_page():
     watchlist = lade_aktien()
     # --------------------------------------------------
@@ -487,55 +510,41 @@ def aktienseite():
                     with col2:
                         st.metric("Confidence", f"{decision_v2.confidence:.2f}")
 
-                    st.markdown("### ✅ Auslösende Regeln")
-                    if decision_v2.reasons:
-                        for r in decision_v2.reasons:
-                            st.markdown(f"- ✔️ {r}")
+                    st.subheader("✅ Warum dieses Setup so bewertet wird")
+
+                    rules = getattr(decision_v2, "triggered_rules", [])
+                    if not rules:
+                        st.info("Keine eindeutigen technischen Auslöser erkannt.")
                     else:
-                        st.caption("Keine expliziten Regeln ausgelöst.")
-
-                    with st.expander("🔍 Erweiterte Details (Regeln & Indikatoren)"):
-                        if decision_v2.meta:
-                            st.markdown("**Meta‑Informationen**")
-                            st.json(decision_v2.meta)
-                        st.markdown("**Aktive Entry‑Parameter**")
-                        active_params = _load_rule_params(
-                            symbol,
-                            active_profile=profile,
-                            use_auto=use_auto
-                        )
-                        st.json(active_params)
-                        st.markdown("**Feature‑Snapshot (letzter Handelstag)**")
-                        try:
-                            feat = build_features(data)
-                            st.json({
-                                "RSI": round(feat.get("rsi", float("nan")), 2),
-                                "MACD_Hist": round(feat.get("macd_hist", float("nan")), 4),
-                                "BB_Position": round(feat.get("bb_pos", float("nan")), 3),
-                                "ADX": round(feat.get("adx", float("nan")), 2),
-                                "Close": round(feat.get("close", float("nan")), 2),
-                            })
-                        except Exception:
-                            st.caption("Feature‑Snapshot aktuell nicht verfügbar.")
-    
-    # ---------------------------------------------------------
-    # TAB Qualität
-    # ---------------------------------------------------------
-    with tab_qualität:
-        with st.container(border=True):
-            zeige_ruleengine_buyperioden_und_trefferquote(                
-                data=data,
-                symbol=symbol,
-                Auswertung_tage=Auswertung_tage,
-                min_veraenderung=min_veraenderung,
-                max_gap_days=5,
-                active_profile=profile,
-                use_auto=use_auto
-            )
-
-        st.caption(
-            f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
-        )
+                        for rule in rules:
+                            info = RULE_EXPLANATIONS.get(rule)
+                            if info:
+                                st.markdown(f"""
+                    **✔️ {info['label']}**  
+                    _{info['explanation']}_
+                    """)
+                            else:
+                                # Fallback, falls eine Regel noch nicht gemappt ist
+                                st.markdown(f"✔️ {rule}")
+                        
+                        # ---------------------------------------------------------
+                        # TAB Qualität
+                        # ---------------------------------------------------------
+                        with tab_qualität:
+                            with st.container(border=True):
+                                zeige_ruleengine_buyperioden_und_trefferquote(                
+                                    data=data,
+                                    symbol=symbol,
+                                    Auswertung_tage=Auswertung_tage,
+                                    min_veraenderung=min_veraenderung,
+                                    max_gap_days=5,
+                                    active_profile=profile,
+                                    use_auto=use_auto
+                                )
+                    
+                            st.caption(
+                                f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
+                            )
 
     # ---------------------------------------------------------
     # TAB CHARTS
