@@ -511,10 +511,11 @@ def aktienseite():
                         st.metric("Confidence", f"{decision_v2.confidence:.2f}")
 
                     st.subheader("✅ Warum dieses Setup so bewertet wird")
+
                     reasons = []
                     
                     # --- Bollinger ---
-                    if close > bb_mid:
+                    if last_close > bb_mid_value:
                         reasons.append({
                             "label": "Kurs oberhalb des Bollinger‑Mittels",
                             "explanation": "Der Kurs liegt über dem mittleren Bollinger‑Band – ein Hinweis auf kurzfristige Stärke."
