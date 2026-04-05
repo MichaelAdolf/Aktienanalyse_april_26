@@ -526,25 +526,25 @@ def aktienseite():
                             else:
                                 # Fallback, falls eine Regel noch nicht gemappt ist
                                 st.markdown(f"✔️ {rule}")
-                        
-                        # ---------------------------------------------------------
-                        # TAB Qualität
-                        # ---------------------------------------------------------
-                        with tab_qualität:
-                            with st.container(border=True):
-                                zeige_ruleengine_buyperioden_und_trefferquote(                
-                                    data=data,
-                                    symbol=symbol,
-                                    Auswertung_tage=Auswertung_tage,
-                                    min_veraenderung=min_veraenderung,
-                                    max_gap_days=5,
-                                    active_profile=profile,
-                                    use_auto=use_auto
-                                )
+                                
+    # ---------------------------------------------------------
+    # TAB Qualität
+    # ---------------------------------------------------------
+    with tab_qualität:
+        with st.container(border=True):
+            zeige_ruleengine_buyperioden_und_trefferquote(                
+                data=data,
+                symbol=symbol,
+                Auswertung_tage=Auswertung_tage,
+                min_veraenderung=min_veraenderung,
+                max_gap_days=5,
+                active_profile=profile,
+                use_auto=use_auto
+            )
                     
-                            st.caption(
-                                f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
-                            )
+            st.caption(
+                f"Profil: **{profile}** | Auto(learned): **{'ON' if use_auto else 'OFF'}**"
+            )
 
     # ---------------------------------------------------------
     # TAB CHARTS
